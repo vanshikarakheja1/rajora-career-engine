@@ -179,6 +179,7 @@ Example recommendation output:
 |       `-- utils/           # Shared helper functions
 |-- tests/                   # Test files
 |-- .gitignore
+|-- requirements.txt
 `-- README.md
 ```
 
@@ -211,10 +212,40 @@ Upgrade pip:
 python -m pip install --upgrade pip
 ```
 
+Install dependencies:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
 Start Jupyter Notebook:
 
 ```powershell
 jupyter notebook
+```
+
+## Baseline Model
+
+The first baseline model is a simple Decision Tree classifier.
+
+Current baseline setup:
+
+- Dataset: `data/raw/students_5000.xlsx`
+- Target column: `recommended_career_1`
+- Model: Decision Tree Classifier
+- Train/test split: 80/20
+- Metric: Accuracy
+
+Run the baseline:
+
+```powershell
+python scripts/train_baseline_decision_tree.py
+```
+
+Latest local result:
+
+```text
+Accuracy: 0.9430
 ```
 
 ## Development Roadmap
@@ -289,5 +320,5 @@ POST /report
 - Project folder structure created.
 - README created with complete project information.
 - Virtual environment created outside the project folder.
-- Placeholder implementation files removed for a clean initial GitHub push.
-
+- EDA notebook created.
+- Baseline Decision Tree model created.
