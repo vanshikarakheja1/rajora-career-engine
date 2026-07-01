@@ -248,6 +248,38 @@ Latest local result:
 Accuracy: 0.9430
 ```
 
+## Interactive App
+
+The project now includes a simple user interface for students to enter their profile and get career recommendations.
+
+The app provides:
+
+- Student profile form
+- Skill and interest selection
+- Career path predictions
+- Confidence score for each recommendation
+- Matched skills
+- Missing skills
+- Roadmap steps to improve toward each career
+
+Run the app:
+
+```powershell
+python run_app.py
+```
+
+Open:
+
+```text
+http://127.0.0.1:8000
+```
+
+API endpoint used by the UI:
+
+```text
+POST /api/recommend
+```
+
 ## Development Roadmap
 
 | Week | Goal |
@@ -322,3 +354,4 @@ POST /report
 - Virtual environment created outside the project folder.
 - EDA notebook created.
 - Baseline Decision Tree model created.
+- Interactive UI and recommendation API created.

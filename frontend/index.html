@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rajora Career Engine</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="panel input-panel">
+        <div class="brand-row">
+          <div>
+            <p class="eyebrow">Rajora AI</p>
+            <h1>Career Engine</h1>
+          </div>
+          <span class="status-pill" id="apiStatus">Checking</span>
+        </div>
+
+        <form id="profileForm" class="profile-form">
+          <div class="section-title">Academic Profile</div>
+          <div class="grid two">
+            <label>
+              Education
+              <select name="education_level" required>
+                <option value="B.Tech">B.Tech</option>
+                <option value="M.Tech">M.Tech</option>
+                <option value="BCA">BCA</option>
+                <option value="MCA">MCA</option>
+                <option value="B.Sc">B.Sc</option>
+              </select>
+            </label>
+            <label>
+              Branch
+              <select name="branch" required>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Information Technology">Information Technology</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Data Science">Data Science</option>
+                <option value="AI and ML">AI and ML</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            Specialization
+            <input name="specialization" type="text" value="Machine Learning" />
+          </label>
+
+          <div class="grid three">
+            <label>
+              CGPA
+              <input name="cgpa" type="number" min="0" max="10" step="0.1" value="8.2" required />
+            </label>
+            <label>
+              Class 10 %
+              <input name="class_10_percentage" type="number" min="0" max="100" step="0.1" value="85" />
+            </label>
+            <label>
+              Class 12 %
+              <input name="class_12_percentage" type="number" min="0" max="100" step="0.1" value="82" />
+            </label>
+          </div>
+
+          <div class="section-title">Skills</div>
+          <div class="chip-grid" id="skillsGrid"></div>
+
+          <div class="section-title">Interests</div>
+          <div class="chip-grid compact" id="interestsGrid"></div>
+
+          <div class="section-title">Experience</div>
+          <div class="grid three">
+            <label>
+              Projects
+              <input name="total_projects" type="number" min="0" value="3" />
+            </label>
+            <label>
+              Certifications
+              <input name="total_certifications" type="number" min="0" value="2" />
+            </label>
+            <label>
+              Internships
+              <input name="internship_count" type="number" min="0" value="1" />
+            </label>
+          </div>
+
+          <div class="grid three">
+            <label>
+              Hackathons
+              <input name="hackathons" type="number" min="0" value="1" />
+            </label>
+            <label>
+              LeetCode
+              <input name="leetcode_questions" type="number" min="0" value="120" />
+            </label>
+            <label>
+              GitHub Repos
+              <input name="github_repositories" type="number" min="0" value="6" />
+            </label>
+          </div>
+
+          <div class="grid two">
+            <label>
+              Work Mode
+              <select name="preferred_work_mode">
+                <option value="Hybrid">Hybrid</option>
+                <option value="Remote">Remote</option>
+                <option value="Onsite">Onsite</option>
+              </select>
+            </label>
+            <label>
+              Salary Goal LPA
+              <input name="expected_salary_lpa" type="number" min="0" step="0.5" value="8" />
+            </label>
+          </div>
+
+          <label>
+            Career Goal
+            <input name="career_goal" type="text" value="Data Scientist" />
+          </label>
+
+          <button type="submit" class="primary-button" id="submitButton">Recommend Careers</button>
+        </form>
+      </section>
+
+      <section class="panel results-panel">
+        <div class="results-header">
+          <div>
+            <p class="eyebrow">Prediction</p>
+            <h2>Recommended Paths</h2>
+          </div>
+          <span class="model-pill">Decision Tree</span>
+        </div>
+
+        <div id="emptyState" class="empty-state">
+          Complete the profile and run a recommendation.
+        </div>
+        <div id="results" class="results-list"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
