@@ -164,33 +164,38 @@
             <p class="eyebrow">Prediction</p>
             <h2>Recommended Paths</h2>
           </div>
-          <span class="model-pill">Decision Tree</span>
         </div>
 
         <div id="emptyState" class="empty-state">
           Complete the profile and run a recommendation.
         </div>
         <div id="results" class="results-list"></div>
-
-        <div class="assistant-panel">
-          <div class="assistant-header">
-            <div>
-              <p class="eyebrow">Assistant</p>
-              <h3>Recommendation Help</h3>
-            </div>
-          </div>
-          <div id="chatMessages" class="chat-messages">
-            <div class="chat-bubble assistant">
-              Ask me why a career was recommended, what skills to learn, or what roadmap to follow.
-            </div>
-          </div>
-          <form id="chatForm" class="chat-form">
-            <input id="chatInput" type="text" placeholder="Ask about your recommendation..." />
-            <button type="submit">Send</button>
-          </form>
-        </div>
       </section>
     </main>
+
+    <aside class="floating-assistant" id="assistantWidget">
+      <button class="assistant-toggle" id="assistantToggle" type="button" aria-expanded="true">
+        <span>Assistant</span>
+        <span id="assistantToggleIcon">-</span>
+      </button>
+      <div class="assistant-panel" id="assistantPanel">
+        <div class="assistant-header">
+          <div>
+            <p class="eyebrow">Assistant</p>
+            <h3>Recommendation Help</h3>
+          </div>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+          <div class="chat-bubble assistant">
+            Ask me why a career was recommended, what skills to learn, or what roadmap to follow.
+          </div>
+        </div>
+        <form id="chatForm" class="chat-form">
+          <input id="chatInput" type="text" placeholder="Ask about your recommendation..." autocomplete="off" />
+          <button id="chatSubmitButton" type="submit">Send</button>
+        </form>
+      </div>
+    </aside>
 
     <script src="/app.js"></script>
   </body>

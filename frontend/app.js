@@ -170,6 +170,7 @@ function addChatBubble(role, content) {
   bubble.textContent = content;
   container.appendChild(bubble);
   container.scrollTop = container.scrollHeight;
+  return bubble;
 }
 
 async function checkApiStatus() {
@@ -248,13 +249,16 @@ async function submitChat(event) {
   event.preventDefault();
 
   const input = document.getElementById("chatInput");
+  const button = document.getElementById("chatSubmitButton");
   const message = input.value.trim();
   if (!message) {
     return;
   }
 
   input.value = "";
+  button.disabled = true;
   addChatBubble("user", message);
+  const pendingBubble = addChatBubble("assistant", "Thinking...");
   chatHistory.push({ role: "user", content: message });
 
   try {
@@ -274,15 +278,27 @@ async function submitChat(event) {
       throw new Error(data.detail || "Assistant failed");
     }
 
-    addChatBubble("assistant", data.answer);
+    pendingBubble.textContent = data.answer;
     chatHistory.push({ role: "assistant", content: data.answer });
   } catch (error) {
-    addChatBubble("assistant", error.message);
+    pendingBubble.textContent = error.message || "Assistant failed. Please try again.";
+  } finally {
+    button.disabled = false;
+    input.focus();
   }
+}
+
+function toggleAssistant() {
+  const widget = document.getElementById("assistantWidget");
+  const icon = document.getElementById("assistantToggleIcon");
+  const collapsed = widget.classList.toggle("collapsed");
+  icon.textContent = collapsed ? "+" : "-";
+  document.getElementById("assistantToggle").setAttribute("aria-expanded", String(!collapsed));
 }
 
 renderCheckboxes("skillsGrid", skills, defaultSkills);
 renderCheckboxes("interestsGrid", interests, defaultInterests);
 document.getElementById("profileForm").addEventListener("submit", submitProfile);
 document.getElementById("chatForm").addEventListener("submit", submitChat);
+document.getElementById("assistantToggle").addEventListener("click", toggleAssistant);
 checkApiStatus();

@@ -99,7 +99,7 @@ def groq_answer(
         )
 
     try:
-        client = Groq(api_key=GROQ_API_KEY)
+        client = Groq(api_key=GROQ_API_KEY, timeout=12.0)
         response = client.chat.completions.create(
             model=GROQ_MODEL,
             temperature=0.35,
