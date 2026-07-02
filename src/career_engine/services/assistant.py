@@ -1,4 +1,15 @@
+import os
+
+from dotenv import load_dotenv
+from groq import Groq
+
 from career_engine.api.schemas import CareerRecommendation, StudentProfileRequest
+
+
+load_dotenv()
+
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 
 def words(message: str) -> set[str]:
@@ -13,11 +24,118 @@ def top_recommendation(recommendations: list[CareerRecommendation]) -> CareerRec
     return recommendations[0] if recommendations else None
 
 
+def recommendation_context(
+    profile: StudentProfileRequest | None,
+    recommendations: list[CareerRecommendation],
+) -> str:
+    profile_text = "No profile was provided."
+    if profile:
+        profile_text = (
+            f"Education: {profile.education_level}, branch: {profile.branch}, "
+            f"specialization: {profile.specialization or 'not specified'}, CGPA: {profile.cgpa}, "
+            f"skills: {join_or_empty(profile.skills)}, interests: {join_or_empty(profile.interests)}, "
+            f"career goal: {profile.career_goal or 'not specified'}."
+        )
+
+    recommendation_lines = []
+    for item in recommendations[:5]:
+        roadmap = "; ".join(
+            f"{step.title}: {' '.join(step.actions)}"
+            for step in item.roadmap
+        )
+        recommendation_lines.append(
+            f"{item.career} | score={item.confidence} | matched={join_or_empty(item.matched_skills)} | "
+            f"missing={join_or_empty(item.missing_skills)} | roadmap={roadmap}"
+        )
+
+    recommendations_text = "\n".join(recommendation_lines) or "No recommendations available."
+    return f"Student profile:\n{profile_text}\n\nRecommendations:\n{recommendations_text}"
+
+
+def is_career_related(message: str) -> bool:
+    allowed_terms = {
+        "career",
+        "recommendation",
+        "recommended",
+        "skill",
+        "skills",
+        "roadmap",
+        "learn",
+        "project",
+        "portfolio",
+        "internship",
+        "job",
+        "profile",
+        "education",
+        "branch",
+        "specialization",
+        "salary",
+        "resume",
+        "interview",
+        "path",
+        "goal",
+        "missing",
+        "gap",
+        "why",
+        "best",
+        "compare",
+        "next",
+    }
+    return bool(words(message).intersection(allowed_terms))
+
+
+def groq_answer(
+    message: str,
+    profile: StudentProfileRequest | None,
+    recommendations: list[CareerRecommendation],
+) -> str | None:
+    if not GROQ_API_KEY or not recommendations:
+        return None
+
+    if not is_career_related(message):
+        return (
+            "I can help with career recommendations, skill gaps, roadmaps, profile improvement, "
+            "and questions about this system. I cannot answer unrelated topics here."
+        )
+
+    try:
+        client = Groq(api_key=GROQ_API_KEY)
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            temperature=0.35,
+            max_tokens=650,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are the Rajora Career Engine assistant. Answer only about the user's profile, "
+                        "career recommendations, skill gaps, roadmaps, projects, internships, resumes, "
+                        "interview preparation, and how this recommendation system works. Be helpful, "
+                        "specific, and practical for Indian students. If the user asks unrelated questions, "
+                        "politely refuse and redirect to career guidance. Do not invent model scores or "
+                        "recommendations beyond the provided context."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"{recommendation_context(profile, recommendations)}\n\nQuestion: {message}",
+                },
+            ],
+        )
+        return response.choices[0].message.content or None
+    except Exception:
+        return None
+
+
 def answer_question(
     message: str,
     profile: StudentProfileRequest | None,
     recommendations: list[CareerRecommendation],
 ) -> str:
+    ai_answer = groq_answer(message, profile, recommendations)
+    if ai_answer:
+        return ai_answer
+
     question = message.lower().strip()
     question_words = words(message)
     top = top_recommendation(recommendations)

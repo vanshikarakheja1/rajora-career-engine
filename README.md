@@ -325,6 +325,34 @@ The assistant can answer basic questions about:
 - Which career path is the strongest match
 - How the user's profile relates to the recommendation
 
+## Groq Assistant Setup
+
+The recommendation assistant supports two modes:
+
+- Rule-based fallback mode when no Groq key is configured.
+- Groq-powered mode for deeper career-path conversations.
+
+Create a local `.env` file in the project root:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.1-8b-instant
+```
+
+`.env` is ignored by Git and should never be committed.
+
+The Groq assistant is restricted to:
+
+- User profile discussion
+- Career recommendations
+- Skill gaps
+- Learning roadmap
+- Portfolio projects
+- Internships and entry-level preparation
+- Questions about how the recommendation system works
+
+For unrelated questions, it should politely redirect the user back to career guidance.
+
 ## Development Roadmap
 
 | Week | Goal |

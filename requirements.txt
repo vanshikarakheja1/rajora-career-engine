@@ -7,3 +7,5 @@ uvicorn
 shap
 openpyxl
 joblib
+groq
+python-dotenv
