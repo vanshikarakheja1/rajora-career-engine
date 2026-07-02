@@ -1,0 +1,195 @@
+{
+  "model": "Linear SVM 50K Career Classifier",
+  "dataset": "student_profiles_50k.csv",
+  "target_column": "career_goal",
+  "rows_used": 50000,
+  "features_used": 15,
+  "training_rows": 40000,
+  "testing_rows": 10000,
+  "accuracy": 0.8724,
+  "classes": [
+    "AI Research Scientist",
+    "Blockchain Developer",
+    "Business Analyst",
+    "Cloud Engineer",
+    "Computer Vision Engineer",
+    "Cybersecurity Analyst",
+    "Data Analyst",
+    "Data Scientist",
+    "Database Administrator",
+    "DevOps Engineer",
+    "Embedded Systems Engineer",
+    "Full Stack Developer",
+    "Game Developer",
+    "Machine Learning Engineer",
+    "Mobile App Developer",
+    "NLP Engineer",
+    "Network Engineer",
+    "Penetration Tester",
+    "Product Manager",
+    "QA Test Engineer",
+    "Site Reliability Engineer",
+    "Software Engineer",
+    "UI UX Designer",
+    "Web Developer"
+  ],
+  "classification_report": {
+    "AI Research Scientist": {
+      "precision": 0.8679245283018868,
+      "recall": 0.8932038834951457,
+      "f1-score": 0.8803827751196173,
+      "support": 412.0
+    },
+    "Blockchain Developer": {
+      "precision": 0.9090909090909091,
+      "recall": 0.9330143540669856,
+      "f1-score": 0.9208972845336482,
+      "support": 418.0
+    },
+    "Business Analyst": {
+      "precision": 0.8957816377171216,
+      "recall": 0.8762135922330098,
+      "f1-score": 0.8858895705521472,
+      "support": 412.0
+    },
+    "Cloud Engineer": {
+      "precision": 0.8135135135135135,
+      "recall": 0.7413793103448276,
+      "f1-score": 0.7757731958762887,
+      "support": 406.0
+    },
+    "Computer Vision Engineer": {
+      "precision": 0.8963855421686747,
+      "recall": 0.8899521531100478,
+      "f1-score": 0.8931572629051621,
+      "support": 418.0
+    },
+    "Cybersecurity Analyst": {
+      "precision": 0.7571801566579635,
+      "recall": 0.7142857142857143,
+      "f1-score": 0.7351077313054499,
+      "support": 406.0
+    },
+    "Data Analyst": {
+      "precision": 0.9308641975308642,
+      "recall": 0.921760391198044,
+      "f1-score": 0.9262899262899262,
+      "support": 409.0
+    },
+    "Data Scientist": {
+      "precision": 0.9221105527638191,
+      "recall": 0.9152119700748129,
+      "f1-score": 0.918648310387985,
+      "support": 401.0
+    },
+    "Database Administrator": {
+      "precision": 0.9047619047619048,
+      "recall": 0.9090909090909091,
+      "f1-score": 0.9069212410501193,
+      "support": 418.0
+    },
+    "DevOps Engineer": {
+      "precision": 0.7294685990338164,
+      "recall": 0.7173396674584323,
+      "f1-score": 0.7233532934131737,
+      "support": 421.0
+    },
+    "Embedded Systems Engineer": {
+      "precision": 0.9242053789731052,
+      "recall": 0.9064748201438849,
+      "f1-score": 0.9152542372881356,
+      "support": 417.0
+    },
+    "Full Stack Developer": {
+      "precision": 0.9462102689486552,
+      "recall": 0.9170616113744076,
+      "f1-score": 0.9314079422382672,
+      "support": 422.0
+    },
+    "Game Developer": {
+      "precision": 0.8926829268292683,
+      "recall": 0.9104477611940298,
+      "f1-score": 0.9014778325123153,
+      "support": 402.0
+    },
+    "Machine Learning Engineer": {
+      "precision": 0.9027149321266968,
+      "recall": 0.9477434679334917,
+      "f1-score": 0.9246813441483198,
+      "support": 421.0
+    },
+    "Mobile App Developer": {
+      "precision": 0.927360774818402,
+      "recall": 0.8804597701149425,
+      "f1-score": 0.9033018867924528,
+      "support": 435.0
+    },
+    "NLP Engineer": {
+      "precision": 0.8894348894348895,
+      "recall": 0.8916256157635468,
+      "f1-score": 0.8905289052890529,
+      "support": 406.0
+    },
+    "Network Engineer": {
+      "precision": 0.8314606741573034,
+      "recall": 0.8705882352941177,
+      "f1-score": 0.8505747126436781,
+      "support": 425.0
+    },
+    "Penetration Tester": {
+      "precision": 0.7432762836185819,
+      "recall": 0.7469287469287469,
+      "f1-score": 0.7450980392156863,
+      "support": 407.0
+    },
+    "Product Manager": {
+      "precision": 0.9197080291970803,
+      "recall": 0.9108433734939759,
+      "f1-score": 0.9152542372881356,
+      "support": 415.0
+    },
+    "QA Test Engineer": {
+      "precision": 0.916289592760181,
+      "recall": 0.9246575342465754,
+      "f1-score": 0.9204545454545454,
+      "support": 438.0
+    },
+    "Site Reliability Engineer": {
+      "precision": 0.7142857142857143,
+      "recall": 0.7790697674418605,
+      "f1-score": 0.7452725250278087,
+      "support": 430.0
+    },
+    "Software Engineer": {
+      "precision": 0.9048723897911833,
+      "recall": 0.9219858156028369,
+      "f1-score": 0.9133489461358314,
+      "support": 423.0
+    },
+    "UI UX Designer": {
+      "precision": 0.8772727272727273,
+      "recall": 0.908235294117647,
+      "f1-score": 0.892485549132948,
+      "support": 425.0
+    },
+    "Web Developer": {
+      "precision": 0.927860696517413,
+      "recall": 0.9031476997578692,
+      "f1-score": 0.9153374233128835,
+      "support": 413.0
+    },
+    "accuracy": 0.8724,
+    "macro avg": {
+      "precision": 0.8726965341779865,
+      "recall": 0.8721133941152441,
+      "f1-score": 0.8721207799130658,
+      "support": 10000.0
+    },
+    "weighted avg": {
+      "precision": 0.872778183611597,
+      "recall": 0.8724,
+      "f1-score": 0.8723036449123354,
+      "support": 10000.0
+    }
+  }
+}

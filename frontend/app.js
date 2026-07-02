@@ -16,12 +16,24 @@ const skills = [
   ["linux", "Linux"],
   ["docker", "Docker"],
   ["aws", "AWS"],
+  ["pandas", "Pandas"],
+  ["statistics", "Statistics"],
   ["machine_learning", "Machine Learning"],
   ["deep_learning", "Deep Learning"],
+  ["computer_vision", "Computer Vision"],
+  ["nlp", "NLP"],
   ["data_analysis", "Data Analysis"],
   ["power_bi", "Power BI"],
   ["tableau", "Tableau"],
   ["excel", "Excel"],
+  ["networking", "Networking"],
+  ["cybersecurity", "Cybersecurity"],
+  ["blockchain", "Blockchain"],
+  ["testing", "Testing"],
+  ["automation", "Automation"],
+  ["design", "Design"],
+  ["figma", "Figma"],
+  ["unity", "Unity"],
   ["communication", "Communication"],
   ["problem_solving", "Problem Solving"],
   ["teamwork", "Teamwork"],
@@ -38,10 +50,16 @@ const interests = [
   ["cybersecurity", "Cybersecurity"],
   ["finance", "Finance"],
   ["research", "Research"],
+  ["game_development", "Game Development"],
+  ["business_analytics", "Business Analytics"],
+  ["design", "Design"],
 ];
 
 const defaultSkills = new Set(["python", "sql", "machine_learning", "data_analysis", "git", "communication"]);
 const defaultInterests = new Set(["ai", "data_science"]);
+let lastProfile = null;
+let lastRecommendations = [];
+let chatHistory = [];
 
 function renderCheckboxes(containerId, values, selectedValues) {
   const container = document.getElementById(containerId);
@@ -65,6 +83,14 @@ function numberValue(formData, key) {
 
 function selectedValues(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map((input) => input.value);
+}
+
+function listValue(formData, key) {
+  const value = formData.get(key) || "";
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function confidencePercent(value) {
@@ -137,6 +163,15 @@ function renderError(message) {
   document.getElementById("results").innerHTML = `<div class="error-message">${message}</div>`;
 }
 
+function addChatBubble(role, content) {
+  const container = document.getElementById("chatMessages");
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble ${role}`;
+  bubble.textContent = content;
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+}
+
 async function checkApiStatus() {
   const status = document.getElementById("apiStatus");
 
@@ -176,6 +211,7 @@ async function submitProfile(event) {
     expected_salary_lpa: numberValue(formData, "expected_salary_lpa"),
     preferred_work_mode: formData.get("preferred_work_mode"),
     career_goal: formData.get("career_goal"),
+    certifications: listValue(formData, "certifications"),
     skills: selectedValues("skillsGrid"),
     interests: selectedValues("interestsGrid"),
   };
@@ -197,6 +233,9 @@ async function submitProfile(event) {
     }
 
     renderRecommendations(data.recommendations);
+    lastProfile = payload;
+    lastRecommendations = data.recommendations;
+    addChatBubble("assistant", `I found ${data.recommendations.length} career paths. The strongest match is ${data.recommendations[0].career}.`);
   } catch (error) {
     renderError(error.message);
   } finally {
@@ -205,7 +244,45 @@ async function submitProfile(event) {
   }
 }
 
+async function submitChat(event) {
+  event.preventDefault();
+
+  const input = document.getElementById("chatInput");
+  const message = input.value.trim();
+  if (!message) {
+    return;
+  }
+
+  input.value = "";
+  addChatBubble("user", message);
+  chatHistory.push({ role: "user", content: message });
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        profile: lastProfile,
+        recommendations: lastRecommendations,
+        history: chatHistory,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || "Assistant failed");
+    }
+
+    addChatBubble("assistant", data.answer);
+    chatHistory.push({ role: "assistant", content: data.answer });
+  } catch (error) {
+    addChatBubble("assistant", error.message);
+  }
+}
+
 renderCheckboxes("skillsGrid", skills, defaultSkills);
 renderCheckboxes("interestsGrid", interests, defaultInterests);
 document.getElementById("profileForm").addEventListener("submit", submitProfile);
+document.getElementById("chatForm").addEventListener("submit", submitChat);
 checkApiStatus();

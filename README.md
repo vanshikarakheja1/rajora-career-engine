@@ -248,6 +248,41 @@ Latest local result:
 Accuracy: 0.9430
 ```
 
+## 50K Model Training Results
+
+The newer model training uses `data/raw/student_profiles_50k.csv`.
+
+Dataset summary:
+
+- Rows: 50,000
+- Target column: `career_goal`
+- Career classes: 24
+- Training rows: 40,000
+- Testing rows: 10,000
+
+Model comparison:
+
+| Model | Dataset | Target | Accuracy | Macro F1 | Weighted F1 |
+| --- | --- | --- | --- | --- | --- |
+| Decision Tree Baseline | `students_5000.xlsx` | `recommended_career_1` | 0.9430 | 0.8500 approx | 0.9400 approx |
+| XGBoost 50K Classifier | `student_profiles_50k.csv` | `career_goal` | 0.8669 | 0.8665 | 0.8666 |
+| Linear SVM 50K Classifier | `student_profiles_50k.csv` | `career_goal` | 0.8724 | 0.8721 | 0.8723 |
+
+The active recommender uses the **Linear SVM 50K Career Classifier** because it performed best on the larger text-heavy dataset.
+
+Train the 50K models:
+
+```powershell
+python scripts/train_xgboost_50k_career_model.py
+python scripts/train_linear_svm_50k_career_model.py
+```
+
+The active model artifact is:
+
+```text
+models/linear_svm_50k_career_classifier.joblib
+```
+
 ## Interactive App
 
 The project now includes a simple user interface for students to enter their profile and get career recommendations.
@@ -261,6 +296,7 @@ The app provides:
 - Matched skills
 - Missing skills
 - Roadmap steps to improve toward each career
+- Assistant/chatbot for recommendation questions
 
 Run the app:
 
@@ -278,7 +314,16 @@ API endpoint used by the UI:
 
 ```text
 POST /api/recommend
+POST /api/chat
 ```
+
+The assistant can answer basic questions about:
+
+- Why a career was recommended
+- Which skills are missing
+- What roadmap to follow
+- Which career path is the strongest match
+- How the user's profile relates to the recommendation
 
 ## Development Roadmap
 
@@ -300,6 +345,7 @@ At least three models should be trained and compared:
 - Decision Tree or Logistic Regression as a baseline
 - Random Forest
 - XGBoost
+- Linear SVM for text-heavy skill and interest data
 - Optional neural network if the dataset supports it
 
 Evaluation metrics:
@@ -355,3 +401,6 @@ POST /report
 - EDA notebook created.
 - Baseline Decision Tree model created.
 - Interactive UI and recommendation API created.
+- 50K XGBoost and Linear SVM models trained.
+- Linear SVM 50K model wired into the recommendation engine.
+- Recommendation assistant/chatbot added.

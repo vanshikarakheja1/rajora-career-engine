@@ -28,6 +28,13 @@ Thumbs.db
 # Generated artifacts
 reports/*.pdf
 reports/*.html
+reports/*.json
+models/*.joblib
+models/*.pkl
+!reports/linear_svm_50k_career_metrics.json
+!models/linear_svm_50k_career_classifier.joblib
+!reports/xgboost_50k_career_metrics.json
+!models/xgboost_50k_career_classifier.joblib
 logs/
 
 # Keep directory structure without committing local datasets by accident.

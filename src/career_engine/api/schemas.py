@@ -17,6 +17,7 @@ class StudentProfileRequest(BaseModel):
     expected_salary_lpa: float | None = Field(default=None, ge=0)
     preferred_work_mode: str | None = None
     career_goal: str | None = None
+    certifications: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
     interests: list[str] = Field(default_factory=list)
 
@@ -36,3 +37,19 @@ class CareerRecommendation(BaseModel):
 
 class RecommendationResponse(BaseModel):
     recommendations: list[CareerRecommendation]
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    profile: StudentProfileRequest | None = None
+    recommendations: list[CareerRecommendation] = Field(default_factory=list)
+    history: list[ChatMessage] = Field(default_factory=list)
+
+
+class ChatResponse(BaseModel):
+    answer: str

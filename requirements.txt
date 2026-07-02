@@ -6,3 +6,4 @@ fastapi
 uvicorn
 shap
 openpyxl
+joblib

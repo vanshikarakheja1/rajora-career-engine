@@ -4,8 +4,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from career_engine.api.schemas import RecommendationResponse, StudentProfileRequest
+from career_engine.api.schemas import ChatRequest, ChatResponse, RecommendationResponse, StudentProfileRequest
 from career_engine.ml.model import DatasetNotFoundError, get_recommendations
+from career_engine.services.assistant import answer_question
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -35,6 +36,17 @@ def recommend(profile: StudentProfileRequest) -> RecommendationResponse:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     return RecommendationResponse(recommendations=recommendations)
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+def chat(request: ChatRequest) -> ChatResponse:
+    return ChatResponse(
+        answer=answer_question(
+            message=request.message,
+            profile=request.profile,
+            recommendations=request.recommendations,
+        )
+    )
 
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

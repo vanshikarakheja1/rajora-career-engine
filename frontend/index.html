@@ -45,8 +45,20 @@
 
           <label>
             Specialization
-            <input name="specialization" type="text" value="Machine Learning" />
+            <input name="specialization" type="text" value="Machine Learning" list="specializationSuggestions" />
           </label>
+          <datalist id="specializationSuggestions">
+            <option value="Artificial Intelligence"></option>
+            <option value="Machine Learning"></option>
+            <option value="Data Science"></option>
+            <option value="Cybersecurity"></option>
+            <option value="Cloud Computing"></option>
+            <option value="Full Stack Development"></option>
+            <option value="UI UX Design"></option>
+            <option value="Game Development"></option>
+            <option value="VLSI Design"></option>
+            <option value="IoT"></option>
+          </datalist>
 
           <div class="grid three">
             <label>
@@ -100,6 +112,11 @@
             </label>
           </div>
 
+          <label>
+            Certifications
+            <input name="certifications" type="text" value="Machine Learning Certificate" />
+          </label>
+
           <div class="grid two">
             <label>
               Work Mode
@@ -117,8 +134,25 @@
 
           <label>
             Career Goal
-            <input name="career_goal" type="text" value="Data Scientist" />
+            <input name="career_goal" type="text" value="Data Scientist" list="careerGoalSuggestions" />
           </label>
+          <datalist id="careerGoalSuggestions">
+            <option value="AI Research Scientist"></option>
+            <option value="Business Analyst"></option>
+            <option value="Cloud Engineer"></option>
+            <option value="Cybersecurity Analyst"></option>
+            <option value="Data Analyst"></option>
+            <option value="Data Scientist"></option>
+            <option value="DevOps Engineer"></option>
+            <option value="Full Stack Developer"></option>
+            <option value="Machine Learning Engineer"></option>
+            <option value="Mobile App Developer"></option>
+            <option value="NLP Engineer"></option>
+            <option value="Product Manager"></option>
+            <option value="QA Test Engineer"></option>
+            <option value="Software Engineer"></option>
+            <option value="UI UX Designer"></option>
+          </datalist>
 
           <button type="submit" class="primary-button" id="submitButton">Recommend Careers</button>
         </form>
@@ -137,6 +171,24 @@
           Complete the profile and run a recommendation.
         </div>
         <div id="results" class="results-list"></div>
+
+        <div class="assistant-panel">
+          <div class="assistant-header">
+            <div>
+              <p class="eyebrow">Assistant</p>
+              <h3>Recommendation Help</h3>
+            </div>
+          </div>
+          <div id="chatMessages" class="chat-messages">
+            <div class="chat-bubble assistant">
+              Ask me why a career was recommended, what skills to learn, or what roadmap to follow.
+            </div>
+          </div>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" type="text" placeholder="Ask about your recommendation..." />
+            <button type="submit">Send</button>
+          </form>
+        </div>
       </section>
     </main>
 
