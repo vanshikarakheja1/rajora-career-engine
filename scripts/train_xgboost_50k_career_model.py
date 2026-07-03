@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 
 import joblib
@@ -14,35 +15,16 @@ from xgboost import XGBClassifier
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from career_engine.ml.features import CATEGORICAL_FEATURES, MODEL_FEATURES, NUMERIC_FEATURES, TARGET_COLUMN, TEXT_FEATURES
+
 DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "student_profiles_50k.csv"
 MODEL_PATH = PROJECT_ROOT / "models" / "xgboost_50k_career_classifier.joblib"
 METRICS_PATH = PROJECT_ROOT / "reports" / "xgboost_50k_career_metrics.json"
-TARGET_COLUMN = "career_goal"
 RANDOM_STATE = 42
-
-NUMERIC_FEATURES = [
-    "cgpa",
-    "class_10_percentage",
-    "class_12_percentage",
-    "projects_count",
-    "internships_count",
-    "hackathons",
-    "expected_salary_lpa",
-]
-
-CATEGORICAL_FEATURES = [
-    "education_level",
-    "branch",
-    "specialization",
-    "preferred_work_mode",
-]
-
-TEXT_FEATURES = [
-    "skills",
-    "skill_levels",
-    "interests",
-    "certifications",
-]
 
 
 def load_training_data() -> tuple[pd.DataFrame, pd.Series]:
@@ -50,10 +32,7 @@ def load_training_data() -> tuple[pd.DataFrame, pd.Series]:
         raise FileNotFoundError(f"Dataset not found: {DATASET_PATH}")
 
     df = pd.read_csv(DATASET_PATH).dropna(subset=[TARGET_COLUMN])
-    features = NUMERIC_FEATURES + CATEGORICAL_FEATURES + TEXT_FEATURES
-    available_features = [feature for feature in features if feature in df.columns]
-
-    X = df[available_features].copy()
+    X = df[MODEL_FEATURES].copy()
     X[TEXT_FEATURES] = X[TEXT_FEATURES].fillna("")
 
     return X, df[TARGET_COLUMN]

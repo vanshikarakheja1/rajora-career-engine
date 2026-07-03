@@ -253,7 +253,7 @@ select:focus {
   font-size: 18px;
 }
 
-.confidence {
+.match-score {
   min-width: 72px;
   color: var(--accent-dark);
   font-weight: 800;

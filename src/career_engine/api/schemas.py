@@ -29,7 +29,7 @@ class RoadmapStep(BaseModel):
 
 class CareerRecommendation(BaseModel):
     career: str
-    confidence: float
+    match_score: float = Field(ge=0, le=1)
     matched_skills: list[str]
     missing_skills: list[str]
     roadmap: list[RoadmapStep]
@@ -40,15 +40,15 @@ class RecommendationResponse(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    role: str
-    content: str
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=1200)
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=1200)
     profile: StudentProfileRequest | None = None
     recommendations: list[CareerRecommendation] = Field(default_factory=list)
-    history: list[ChatMessage] = Field(default_factory=list)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=20)
 
 
 class ChatResponse(BaseModel):

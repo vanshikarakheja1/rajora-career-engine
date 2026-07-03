@@ -32,7 +32,7 @@ The system will:
 - Engineer features from skills, interests, education, certifications, and goals.
 - Train and compare multiple ML models.
 - Recommend the top 5 career paths.
-- Show confidence scores for recommendations.
+- Show match scores for recommendations.
 - Identify missing skills for each career.
 - Explain model decisions using explainability tools.
 - Collect user feedback for future retraining.
@@ -146,7 +146,7 @@ Example recommendation output:
   "recommendations": [
     {
       "career": "Data Scientist",
-      "confidence": 0.82,
+      "match_score": 0.82,
       "matched_skills": ["python", "statistics"],
       "missing_skills": ["machine learning", "sql"],
       "reason": "The student profile strongly matches analytical and programming requirements."
@@ -216,6 +216,12 @@ Install dependencies:
 
 ```powershell
 python -m pip install -r requirements.txt
+```
+
+Run automated tests:
+
+```powershell
+python -m pytest
 ```
 
 Start Jupyter Notebook:
@@ -292,7 +298,7 @@ The app provides:
 - Student profile form
 - Skill and interest selection
 - Career path predictions
-- Confidence score for each recommendation
+- Match score for each recommendation
 - Matched skills
 - Missing skills
 - Roadmap steps to improve toward each career
@@ -325,6 +331,22 @@ The assistant can answer basic questions about:
 - Which career path is the strongest match
 - How the user's profile relates to the recommendation
 
+Recommendation scores are returned as `match_score`. This is a hybrid ranking score from the trained model plus rule-based skill and interest fit. It should be treated as a career match score, not as a calibrated probability.
+
+## Production Readiness Updates
+
+The latest code hardening pass fixed the main review findings before deployment:
+
+- Frontend recommendation cards now render dynamic API data using DOM text nodes instead of `innerHTML`.
+- API tests cover health, recommendations, chat fallback, invalid input, CORS config, and chat history limits.
+- Chat history is passed to the assistant and capped so long sessions do not overload the API.
+- CORS is controlled through environment variables instead of allowing every origin by default.
+- The response field is now `match_score` to avoid presenting the hybrid ranking score as calibrated probability.
+- Dependencies are pinned in `requirements.txt`, including Jupyter and pytest for reproducible setup.
+- Model feature constants now match the active 50K Linear SVM/XGBoost training schema.
+
+See `docs/production_readiness.md` for the checklist and validation commands.
+
 ## Groq Assistant Setup
 
 The recommendation assistant supports two modes:
@@ -337,9 +359,13 @@ Create a local `.env` file in the project root:
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.1-8b-instant
+CAREER_ENGINE_ALLOWED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
+CAREER_ENGINE_ALLOW_CREDENTIALS=false
 ```
 
 `.env` is ignored by Git and should never be committed.
+
+For deployment, replace `CAREER_ENGINE_ALLOWED_ORIGINS` with the real frontend domain. Avoid using `*` in production. If `*` is used for temporary testing, credentials are automatically disabled by the API configuration.
 
 The Groq assistant is restricted to:
 
@@ -432,3 +458,4 @@ POST /report
 - 50K XGBoost and Linear SVM models trained.
 - Linear SVM 50K model wired into the recommendation engine.
 - Recommendation assistant/chatbot added.
+- Production readiness fixes added for safer frontend rendering, CORS, chat history, tests, pinned dependencies, and active model feature constants.

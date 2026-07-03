@@ -1,73 +1,26 @@
-TECHNICAL_SKILLS = [
-    "python",
-    "java",
-    "c",
-    "cpp",
-    "javascript",
-    "html",
-    "css",
-    "react",
-    "nodejs",
-    "fastapi",
-    "sql",
-    "mysql",
-    "mongodb",
-    "git",
-    "github",
-    "linux",
-    "docker",
-    "aws",
-    "tensorflow",
-    "pytorch",
-    "scikit_learn",
-    "machine_learning",
-    "deep_learning",
-    "data_analysis",
-    "power_bi",
-    "tableau",
-    "excel",
-]
-
-SOFT_SKILLS = [
-    "communication",
-    "leadership",
-    "problem_solving",
-    "critical_thinking",
-    "teamwork",
-    "adaptability",
-    "creativity",
-]
-
-INTEREST_FEATURES = {
-    "ai": "interest_ai",
-    "data_science": "interest_data_science",
-    "web_development": "interest_web_development",
-    "mobile_development": "interest_mobile_development",
-    "cloud": "interest_cloud",
-    "devops": "interest_devops",
-    "cybersecurity": "interest_cybersecurity",
-    "finance": "interest_finance",
-    "research": "interest_research",
-}
-
-MODEL_FEATURES = [
-    "education_level",
-    "branch",
-    "specialization",
+NUMERIC_FEATURES = [
     "cgpa",
     "class_10_percentage",
     "class_12_percentage",
-    *TECHNICAL_SKILLS,
-    *SOFT_SKILLS,
-    "total_certifications",
-    "total_projects",
-    "internship_count",
+    "projects_count",
+    "internships_count",
     "hackathons",
-    "leetcode_questions",
-    "github_repositories",
-    *INTEREST_FEATURES.values(),
-    "personality_investigative",
-    "preferred_work_mode",
-    "career_goal",
     "expected_salary_lpa",
 ]
+
+CATEGORICAL_FEATURES = [
+    "education_level",
+    "branch",
+    "specialization",
+    "preferred_work_mode",
+]
+
+TEXT_FEATURES = [
+    "skills",
+    "skill_levels",
+    "interests",
+    "certifications",
+]
+
+MODEL_FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES + TEXT_FEATURES
+TARGET_COLUMN = "career_goal"

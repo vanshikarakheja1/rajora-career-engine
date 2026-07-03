@@ -93,7 +93,7 @@ def get_recommendations(profile: StudentProfileRequest, limit: int = 5) -> list[
         recommendations.append(
             CareerRecommendation(
                 career=career,
-                confidence=round(float(combined_score), 4),
+                match_score=round(float(combined_score), 4),
                 matched_skills=details["matched_skills"],
                 missing_skills=details["missing_skills"],
                 roadmap=details["roadmap"],

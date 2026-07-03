@@ -57,23 +57,29 @@ const interests = [
 
 const defaultSkills = new Set(["python", "sql", "machine_learning", "data_analysis", "git", "communication"]);
 const defaultInterests = new Set(["ai", "data_science"]);
+const maxChatHistory = 20;
 let lastProfile = null;
 let lastRecommendations = [];
 let chatHistory = [];
 
 function renderCheckboxes(containerId, values, selectedValues) {
   const container = document.getElementById(containerId);
-  container.innerHTML = values
-    .map(([value, label]) => {
-      const checked = selectedValues.has(value) ? "checked" : "";
-      return `
-        <label class="chip">
-          <input type="checkbox" value="${value}" ${checked} />
-          <span>${label}</span>
-        </label>
-      `;
-    })
-    .join("");
+  container.replaceChildren();
+
+  values.forEach(([value, label]) => {
+    const chip = document.createElement("label");
+    const input = document.createElement("input");
+    const text = document.createElement("span");
+
+    chip.className = "chip";
+    input.type = "checkbox";
+    input.value = value;
+    input.checked = selectedValues.has(value);
+    text.textContent = label;
+
+    chip.append(input, text);
+    container.appendChild(chip);
+  });
 }
 
 function numberValue(formData, key) {
@@ -93,31 +99,47 @@ function listValue(formData, key) {
     .filter(Boolean);
 }
 
-function confidencePercent(value) {
+function matchScorePercent(value) {
   return Math.round(Number(value) * 100);
 }
 
-function renderTags(values, emptyText) {
+function appendTags(container, values, emptyText) {
+  container.replaceChildren();
+
   if (!values.length) {
-    return `<span class="tag">${emptyText}</span>`;
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = emptyText;
+    container.appendChild(tag);
+    return;
   }
 
-  return values.map((value) => `<span class="tag">${value}</span>`).join("");
+  values.forEach((value) => {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = value;
+    container.appendChild(tag);
+  });
 }
 
-function renderRoadmap(steps) {
-  return steps
-    .map(
-      (step) => `
-        <div class="roadmap-step">
-          <strong>${step.title}</strong>
-          <ul>
-            ${step.actions.map((action) => `<li>${action}</li>`).join("")}
-          </ul>
-        </div>
-      `
-    )
-    .join("");
+function appendRoadmap(container, steps) {
+  steps.forEach((step) => {
+    const stepElement = document.createElement("div");
+    const title = document.createElement("strong");
+    const actions = document.createElement("ul");
+
+    stepElement.className = "roadmap-step";
+    title.textContent = step.title;
+
+    step.actions.forEach((action) => {
+      const item = document.createElement("li");
+      item.textContent = action;
+      actions.appendChild(item);
+    });
+
+    stepElement.append(title, actions);
+    container.appendChild(stepElement);
+  });
 }
 
 function renderRecommendations(recommendations) {
@@ -125,42 +147,73 @@ function renderRecommendations(recommendations) {
   const emptyState = document.getElementById("emptyState");
 
   emptyState.style.display = "none";
-  results.innerHTML = recommendations
-    .map((recommendation) => {
-      const percent = confidencePercent(recommendation.confidence);
-      return `
-        <article class="career-card">
-          <div class="career-topline">
-            <div>
-              <h3 class="career-title">${recommendation.career}</h3>
-              <p class="muted">Career match based on your current profile</p>
-            </div>
-            <div class="confidence">${percent}%</div>
-          </div>
-          <div class="meter"><span style="width: ${percent}%"></span></div>
-          <div class="skill-row">
-            <div class="skill-box">
-              <h4>Matched Skills</h4>
-              <div class="tag-list">${renderTags(recommendation.matched_skills, "No direct match yet")}</div>
-            </div>
-            <div class="skill-box">
-              <h4>Skills To Build</h4>
-              <div class="tag-list">${renderTags(recommendation.missing_skills, "No major gap")}</div>
-            </div>
-          </div>
-          <div class="roadmap">
-            <h4>Roadmap</h4>
-            ${renderRoadmap(recommendation.roadmap)}
-          </div>
-        </article>
-      `;
-    })
-    .join("");
+  results.replaceChildren();
+
+  recommendations.forEach((recommendation) => {
+    const percent = matchScorePercent(recommendation.match_score);
+    const card = document.createElement("article");
+    const topLine = document.createElement("div");
+    const titleGroup = document.createElement("div");
+    const title = document.createElement("h3");
+    const subtitle = document.createElement("p");
+    const score = document.createElement("div");
+    const meter = document.createElement("div");
+    const meterFill = document.createElement("span");
+    const skillRow = document.createElement("div");
+    const matchedBox = document.createElement("div");
+    const missingBox = document.createElement("div");
+    const matchedTitle = document.createElement("h4");
+    const missingTitle = document.createElement("h4");
+    const matchedTags = document.createElement("div");
+    const missingTags = document.createElement("div");
+    const roadmap = document.createElement("div");
+    const roadmapTitle = document.createElement("h4");
+
+    card.className = "career-card";
+    topLine.className = "career-topline";
+    title.className = "career-title";
+    subtitle.className = "muted";
+    score.className = "match-score";
+    meter.className = "meter";
+    skillRow.className = "skill-row";
+    matchedBox.className = "skill-box";
+    missingBox.className = "skill-box";
+    matchedTags.className = "tag-list";
+    missingTags.className = "tag-list";
+    roadmap.className = "roadmap";
+
+    title.textContent = recommendation.career;
+    subtitle.textContent = "Career match based on your current profile";
+    score.textContent = `${percent}%`;
+    score.setAttribute("aria-label", `${percent}% match score`);
+    meterFill.style.width = `${percent}%`;
+    matchedTitle.textContent = "Matched Skills";
+    missingTitle.textContent = "Skills To Build";
+    roadmapTitle.textContent = "Roadmap";
+
+    appendTags(matchedTags, recommendation.matched_skills, "No direct match yet");
+    appendTags(missingTags, recommendation.missing_skills, "No major gap");
+    appendRoadmap(roadmap, recommendation.roadmap);
+
+    titleGroup.append(title, subtitle);
+    topLine.append(titleGroup, score);
+    meter.appendChild(meterFill);
+    matchedBox.append(matchedTitle, matchedTags);
+    missingBox.append(missingTitle, missingTags);
+    skillRow.append(matchedBox, missingBox);
+    roadmap.prepend(roadmapTitle);
+    card.append(topLine, meter, skillRow, roadmap);
+    results.appendChild(card);
+  });
 }
 
 function renderError(message) {
+  const error = document.createElement("div");
+  error.className = "error-message";
+  error.textContent = message;
+
   document.getElementById("emptyState").style.display = "none";
-  document.getElementById("results").innerHTML = `<div class="error-message">${message}</div>`;
+  document.getElementById("results").replaceChildren(error);
 }
 
 function addChatBubble(role, content) {
@@ -171,6 +224,11 @@ function addChatBubble(role, content) {
   container.appendChild(bubble);
   container.scrollTop = container.scrollHeight;
   return bubble;
+}
+
+function addChatHistory(role, content) {
+  chatHistory.push({ role, content });
+  chatHistory = chatHistory.slice(-maxChatHistory);
 }
 
 async function checkApiStatus() {
@@ -259,7 +317,7 @@ async function submitChat(event) {
   button.disabled = true;
   addChatBubble("user", message);
   const pendingBubble = addChatBubble("assistant", "Thinking...");
-  chatHistory.push({ role: "user", content: message });
+  addChatHistory("user", message);
 
   try {
     const response = await fetch("/api/chat", {
@@ -279,7 +337,7 @@ async function submitChat(event) {
     }
 
     pendingBubble.textContent = data.answer;
-    chatHistory.push({ role: "assistant", content: data.answer });
+    addChatHistory("assistant", data.answer);
   } catch (error) {
     pendingBubble.textContent = error.message || "Assistant failed. Please try again.";
   } finally {
