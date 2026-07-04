@@ -36,6 +36,8 @@ models/*.pkl
 !models/linear_svm_50k_career_classifier.joblib
 !reports/xgboost_50k_career_metrics.json
 !models/xgboost_50k_career_classifier.joblib
+!reports/career_match_score_metrics.json
+!models/career_match_score_regressor.joblib
 logs/
 
 # Keep directory structure without committing local datasets by accident.

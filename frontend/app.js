@@ -34,6 +34,25 @@ const skills = [
   ["design", "Design"],
   ["figma", "Figma"],
   ["unity", "Unity"],
+  ["sales", "Sales"],
+  ["marketing", "Marketing"],
+  ["digital_marketing", "Digital Marketing"],
+  ["accounting", "Accounting"],
+  ["financial_analysis", "Financial Analysis"],
+  ["teaching", "Teaching"],
+  ["content_writing", "Content Writing"],
+  ["video_editing", "Video Editing"],
+  ["public_speaking", "Public Speaking"],
+  ["customer_service", "Customer Service"],
+  ["nursing", "Nursing"],
+  ["patient_care", "Patient Care"],
+  ["legal_research", "Legal Research"],
+  ["operations", "Operations"],
+  ["project_management", "Project Management"],
+  ["agriculture", "Agriculture"],
+  ["culinary_skills", "Culinary Skills"],
+  ["event_management", "Event Management"],
+  ["photography", "Photography"],
   ["communication", "Communication"],
   ["problem_solving", "Problem Solving"],
   ["teamwork", "Teamwork"],
@@ -58,6 +77,7 @@ const interests = [
 const defaultSkills = new Set(["python", "sql", "machine_learning", "data_analysis", "git", "communication"]);
 const defaultInterests = new Set(["ai", "data_science"]);
 const maxChatHistory = 20;
+const selectedSkills = new Map(skills.filter(([value]) => defaultSkills.has(value)));
 let lastProfile = null;
 let lastRecommendations = [];
 let chatHistory = [];
@@ -82,6 +102,121 @@ function renderCheckboxes(containerId, values, selectedValues) {
   });
 }
 
+function normalizeSkill(value) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function formatSkill(value) {
+  return normalizeSkill(value)
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function findCatalogSkill(value) {
+  const key = normalizeSkill(value);
+  return skills.find(([skillValue, label]) => skillValue === key || normalizeSkill(label) === key);
+}
+
+function addSkill(value, label = formatSkill(value)) {
+  const catalogSkill = findCatalogSkill(value);
+  const key = catalogSkill ? catalogSkill[0] : normalizeSkill(value);
+  if (!key) {
+    return;
+  }
+
+  selectedSkills.set(key, catalogSkill ? catalogSkill[1] : label.trim() || formatSkill(key));
+  renderSelectedSkills();
+}
+
+function removeSkill(value) {
+  selectedSkills.delete(value);
+  renderSelectedSkills();
+}
+
+function renderSelectedSkills() {
+  const container = document.getElementById("skillsGrid");
+  container.replaceChildren();
+
+  selectedSkills.forEach((label, value) => {
+    const chip = document.createElement("button");
+    chip.className = "selected-skill";
+    chip.type = "button";
+    chip.textContent = `${label} x`;
+    chip.addEventListener("click", () => removeSkill(value));
+    container.appendChild(chip);
+  });
+}
+
+function skillMatches(query) {
+  const normalizedQuery = normalizeSkill(query);
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  return skills
+    .filter(([value, label]) => {
+      const searchable = `${value} ${label}`.toLowerCase();
+      return searchable.includes(normalizedQuery.replaceAll("_", " "));
+    })
+    .sort(([firstValue], [secondValue]) => {
+      const firstStarts = firstValue.startsWith(normalizedQuery) ? 0 : 1;
+      const secondStarts = secondValue.startsWith(normalizedQuery) ? 0 : 1;
+      return firstStarts - secondStarts;
+    })
+    .slice(0, 8);
+}
+
+function renderSkillSuggestions(query) {
+  const container = document.getElementById("skillSuggestions");
+  const matches = skillMatches(query);
+  const normalizedQuery = normalizeSkill(query);
+  container.replaceChildren();
+
+  matches.forEach(([value, label]) => {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "skill-suggestion";
+    option.textContent = label;
+    option.addEventListener("click", () => {
+      addSkill(value, label);
+      document.getElementById("skillSearchInput").value = "";
+      container.replaceChildren();
+    });
+    container.appendChild(option);
+  });
+
+  if (normalizedQuery && !selectedSkills.has(normalizedQuery)) {
+    const customOption = document.createElement("button");
+    customOption.type = "button";
+    customOption.className = "skill-suggestion custom";
+    customOption.textContent = `Add "${formatSkill(normalizedQuery)}"`;
+    customOption.addEventListener("click", () => {
+      addSkill(normalizedQuery);
+      document.getElementById("skillSearchInput").value = "";
+      container.replaceChildren();
+    });
+    container.appendChild(customOption);
+  }
+}
+
+function setupSkillSearch() {
+  const input = document.getElementById("skillSearchInput");
+
+  input.addEventListener("input", () => renderSkillSuggestions(input.value));
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    addSkill(input.value);
+    input.value = "";
+    document.getElementById("skillSuggestions").replaceChildren();
+  });
+}
+
 function numberValue(formData, key) {
   const value = formData.get(key);
   return value === "" || value === null ? null : Number(value);
@@ -89,6 +224,10 @@ function numberValue(formData, key) {
 
 function selectedValues(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map((input) => input.value);
+}
+
+function selectedSkillValues() {
+  return Array.from(selectedSkills.keys());
 }
 
 function listValue(formData, key) {
@@ -142,6 +281,136 @@ function appendRoadmap(container, steps) {
   });
 }
 
+function requiredSkills(recommendation) {
+  return [...recommendation.matched_skills, ...recommendation.missing_skills];
+}
+
+function weeklyPlan(recommendation) {
+  const missingSkills = recommendation.missing_skills.length
+    ? recommendation.missing_skills
+    : ["role-specific advanced practice"];
+  const firstSkills = missingSkills.slice(0, 2).join(", ");
+  const nextSkills = missingSkills.slice(2, 5).join(", ") || "portfolio refinement";
+
+  return [
+    {
+      week: "Week 1",
+      title: "Understand the role",
+      actions: [
+        `Study what a ${recommendation.career} does day to day.`,
+        `Review all required skills: ${requiredSkills(recommendation).join(", ")}.`,
+      ],
+    },
+    {
+      week: "Week 2",
+      title: "Build core gaps",
+      actions: [
+        `Focus on ${firstSkills}.`,
+        "Complete small practice tasks and keep notes of what you learn.",
+      ],
+    },
+    {
+      week: "Week 3",
+      title: "Apply through a project",
+      actions: [
+        `Build one practical project related to ${recommendation.career}.`,
+        `Use or practice ${nextSkills}.`,
+      ],
+    },
+    {
+      week: "Week 4",
+      title: "Prepare for opportunities",
+      actions: [
+        "Update your resume and portfolio with the project.",
+        "Practice interview questions and apply for internships, jobs, or freelance work.",
+      ],
+    },
+  ];
+}
+
+function appendSkillSection(container, title, values, emptyText) {
+  const section = document.createElement("section");
+  const heading = document.createElement("h4");
+  const tags = document.createElement("div");
+
+  section.className = "detail-section";
+  tags.className = "tag-list";
+  heading.textContent = title;
+  appendTags(tags, values, emptyText);
+  section.append(heading, tags);
+  container.appendChild(section);
+}
+
+function openCareerDetail(recommendation) {
+  const oldDialog = document.getElementById("careerDetailDialog");
+  if (oldDialog) {
+    oldDialog.remove();
+  }
+
+  const overlay = document.createElement("div");
+  const dialog = document.createElement("section");
+  const header = document.createElement("div");
+  const titleGroup = document.createElement("div");
+  const eyebrow = document.createElement("p");
+  const title = document.createElement("h3");
+  const closeButton = document.createElement("button");
+  const score = document.createElement("p");
+  const roadmap = document.createElement("div");
+  const roadmapTitle = document.createElement("h4");
+
+  overlay.className = "career-detail-overlay";
+  overlay.id = "careerDetailDialog";
+  dialog.className = "career-detail";
+  header.className = "career-detail-header";
+  closeButton.className = "detail-close";
+  closeButton.type = "button";
+  closeButton.textContent = "Close";
+  eyebrow.className = "eyebrow";
+  score.className = "muted";
+  roadmap.className = "week-plan";
+
+  eyebrow.textContent = "Career Roadmap";
+  title.textContent = recommendation.career;
+  score.textContent = `${matchScorePercent(recommendation.match_score)}% match score`;
+  roadmapTitle.textContent = "Week-wise development plan";
+
+  titleGroup.append(eyebrow, title, score);
+  header.append(titleGroup, closeButton);
+  dialog.appendChild(header);
+  appendSkillSection(dialog, "All relevant skills", requiredSkills(recommendation), "No skills listed");
+  appendSkillSection(dialog, "Already matched", recommendation.matched_skills, "No direct match yet");
+  appendSkillSection(dialog, "Skills to build", recommendation.missing_skills, "No major gaps");
+
+  roadmap.appendChild(roadmapTitle);
+  weeklyPlan(recommendation).forEach((item) => {
+    const step = document.createElement("div");
+    const heading = document.createElement("strong");
+    const list = document.createElement("ul");
+
+    step.className = "week-step";
+    heading.textContent = `${item.week}: ${item.title}`;
+    item.actions.forEach((action) => {
+      const listItem = document.createElement("li");
+      listItem.textContent = action;
+      list.appendChild(listItem);
+    });
+
+    step.append(heading, list);
+    roadmap.appendChild(step);
+  });
+
+  dialog.appendChild(roadmap);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  closeButton.addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      overlay.remove();
+    }
+  });
+}
+
 function renderRecommendations(recommendations) {
   const results = document.getElementById("results");
   const emptyState = document.getElementById("emptyState");
@@ -170,6 +439,9 @@ function renderRecommendations(recommendations) {
     const roadmapTitle = document.createElement("h4");
 
     card.className = "career-card";
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `Open roadmap for ${recommendation.career}`);
     topLine.className = "career-topline";
     title.className = "career-title";
     subtitle.className = "muted";
@@ -203,6 +475,13 @@ function renderRecommendations(recommendations) {
     skillRow.append(matchedBox, missingBox);
     roadmap.prepend(roadmapTitle);
     card.append(topLine, meter, skillRow, roadmap);
+    card.addEventListener("click", () => openCareerDetail(recommendation));
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openCareerDetail(recommendation);
+      }
+    });
     results.appendChild(card);
   });
 }
@@ -271,7 +550,7 @@ async function submitProfile(event) {
     preferred_work_mode: formData.get("preferred_work_mode"),
     career_goal: formData.get("career_goal"),
     certifications: listValue(formData, "certifications"),
-    skills: selectedValues("skillsGrid"),
+    skills: selectedSkillValues(),
     interests: selectedValues("interestsGrid"),
   };
 
@@ -354,8 +633,9 @@ function toggleAssistant() {
   document.getElementById("assistantToggle").setAttribute("aria-expanded", String(!collapsed));
 }
 
-renderCheckboxes("skillsGrid", skills, defaultSkills);
+renderSelectedSkills();
 renderCheckboxes("interestsGrid", interests, defaultInterests);
+setupSkillSearch();
 document.getElementById("profileForm").addEventListener("submit", submitProfile);
 document.getElementById("chatForm").addEventListener("submit", submitChat);
 document.getElementById("assistantToggle").addEventListener("click", toggleAssistant);

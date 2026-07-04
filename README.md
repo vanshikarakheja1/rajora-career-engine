@@ -274,7 +274,7 @@ Model comparison:
 | XGBoost 50K Classifier | `student_profiles_50k.csv` | `career_goal` | 0.8669 | 0.8665 | 0.8666 |
 | Linear SVM 50K Classifier | `student_profiles_50k.csv` | `career_goal` | 0.8724 | 0.8721 | 0.8723 |
 
-The active recommender uses the **Linear SVM 50K Career Classifier** because it performed best on the larger text-heavy dataset.
+These models are kept as comparison models. The active recommender now uses the newer career match-score regressor because it ranks many career paths instead of classifying the user into one software-focused label.
 
 Train the 50K models:
 
@@ -283,11 +283,51 @@ python scripts/train_xgboost_50k_career_model.py
 python scripts/train_linear_svm_50k_career_model.py
 ```
 
-The active model artifact is:
+The comparison model artifact is:
 
 ```text
 models/linear_svm_50k_career_classifier.joblib
 ```
+
+## Active Model: Career Match Score Regressor
+
+The active recommendation model is designed to recommend careers for students and experienced users across many domains. It predicts a `match_score` for each user-career pair instead of classifying a user into one career.
+
+Expected raw files:
+
+```text
+data/raw/user_profiles.csv
+data/raw/career_catalog.csv
+data/raw/career_matches.csv
+```
+
+Train it after those files are added locally:
+
+```powershell
+python scripts/train_career_match_score_model.py
+```
+
+Output artifacts:
+
+```text
+models/career_match_score_regressor.joblib
+reports/career_match_score_metrics.json
+```
+
+Latest result:
+
+| Metric | Value |
+| --- | ---: |
+| Rows used | 1,149,719 |
+| Training rows | 919,855 |
+| Testing rows | 229,864 |
+| RMSE | 0.0399 |
+| MAE | 0.0194 |
+| R2 Score | 0.9833 |
+| Precision@5 | 0.7987 |
+
+The API uses this model first. If the artifact or career catalog is missing, it falls back to the Linear SVM model.
+The committed model artifact includes a small career catalog snapshot for inference, so raw training datasets are not required in GitHub.
 
 ## Interactive App
 
@@ -296,7 +336,7 @@ The project now includes a simple user interface for students to enter their pro
 The app provides:
 
 - Student profile form
-- Skill and interest selection
+- Skill search, custom skill adding, and interest selection
 - Career path predictions
 - Match score for each recommendation
 - Matched skills
@@ -456,6 +496,6 @@ POST /report
 - Baseline Decision Tree model created.
 - Interactive UI and recommendation API created.
 - 50K XGBoost and Linear SVM models trained.
-- Linear SVM 50K model wired into the recommendation engine.
+- Career match-score regressor trained and wired into the recommendation engine.
 - Recommendation assistant/chatbot added.
 - Production readiness fixes added for safer frontend rendering, CORS, chat history, tests, pinned dependencies, and active model feature constants.

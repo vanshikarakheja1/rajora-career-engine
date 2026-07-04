@@ -1,0 +1,35 @@
+{
+  "model": "Histogram Gradient Boosting Career Match Score Regressor",
+  "target_column": "match_score",
+  "source_datasets": [
+    "user_profiles.csv",
+    "career_catalog.csv",
+    "career_matches.csv"
+  ],
+  "rows_used": 1149719,
+  "training_rows": 919855,
+  "testing_rows": 229864,
+  "features_used": [
+    "age",
+    "years_experience",
+    "salary_expectation",
+    "skill_match_score",
+    "interest_match_score",
+    "education_match_score",
+    "experience_match_score",
+    "user_type",
+    "education_level",
+    "field_of_study",
+    "current_role",
+    "preferred_work_style",
+    "preferred_domain",
+    "location_preference",
+    "career_domain",
+    "career_level",
+    "industry"
+  ],
+  "rmse": 0.0399,
+  "mae": 0.0194,
+  "r2": 0.9833,
+  "precision_at_5": 0.7987
+}

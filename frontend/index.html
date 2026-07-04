@@ -76,7 +76,14 @@
           </div>
 
           <div class="section-title">Skills</div>
-          <div class="chip-grid" id="skillsGrid"></div>
+          <div class="skill-picker">
+            <label>
+              Search Skills
+              <input id="skillSearchInput" type="text" placeholder="Type a skill and press Enter" autocomplete="off" />
+            </label>
+            <div id="skillSuggestions" class="skill-suggestions"></div>
+            <div class="selected-skill-list" id="skillsGrid"></div>
+          </div>
 
           <div class="section-title">Interests</div>
           <div class="chip-grid compact" id="interestsGrid"></div>

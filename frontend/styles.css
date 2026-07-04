@@ -5,7 +5,7 @@
   --muted: #657181;
   --line: #d8dee7;
   --accent: #0f766e;
-  --accent-dark: #115e59;
+  --accent-dark: #0b4c48;
   --accent-light: #d9f3ef;
   --warn: #b45309;
   --radius: 8px;
@@ -157,6 +157,46 @@ select:focus {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.skill-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.skill-suggestions,
+.selected-skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skill-suggestion,
+.selected-skill {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fbfcfd;
+  color: #2f3b48;
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.skill-suggestion:hover,
+.selected-skill:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+.skill-suggestion.custom {
+  background: var(--accent-light);
+  color: var(--accent-dark);
+}
+
+.selected-skill {
+  background: #edf2f7;
+}
+
 .chip {
   display: flex;
   align-items: center;
@@ -239,6 +279,14 @@ select:focus {
   border-radius: var(--radius);
   padding: 16px;
   background: #ffffff;
+  cursor: pointer;
+}
+
+.career-card:hover,
+.career-card:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+  outline: none;
 }
 
 .career-topline {
@@ -337,6 +385,87 @@ select:focus {
   background: #fff7ed;
   color: var(--warn);
   padding: 12px;
+}
+
+.career-detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.48);
+  padding: 18px;
+}
+
+.career-detail {
+  display: grid;
+  gap: 16px;
+  width: min(760px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  border-radius: var(--radius);
+  background: #ffffff;
+  padding: 20px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+}
+
+.career-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+
+.career-detail-header h3 {
+  margin-bottom: 4px;
+  font-size: 24px;
+}
+
+.detail-close {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 8px 10px;
+  font-weight: 750;
+}
+
+.detail-section {
+  display: grid;
+  gap: 8px;
+}
+
+.detail-section h4,
+.week-plan h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.week-plan {
+  display: grid;
+  gap: 10px;
+}
+
+.week-step {
+  border-left: 3px solid var(--accent);
+  background: #f8fafc;
+  padding: 10px 12px;
+}
+
+.week-step strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.week-step ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #3d4a59;
+  font-size: 13px;
 }
 
 .floating-assistant {
