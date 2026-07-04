@@ -356,6 +356,52 @@ Open:
 http://127.0.0.1:8000
 ```
 
+If the terminal says `uvicorn is not installed`, activate the project virtual environment or run:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+Docker option:
+
+```powershell
+docker build -t rajora-career-engine .
+docker run --env-file .env -p 8000:8000 rajora-career-engine
+```
+
+For Render backend + Vercel frontend deployment, use [docs/deployment.md](docs/deployment.md).
+
+## Supabase Authentication Setup
+
+The app uses Supabase Auth for email/password signup, login, and Google OAuth. Passwords are stored by Supabase, not by this project.
+
+1. In Supabase, open your project.
+2. Go to `Project Settings` -> `API`.
+3. Copy:
+   - Project URL
+   - anon public key
+4. Create or update `.env`:
+
+```env
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_public_key
+```
+
+5. Go to `Authentication` -> `URL Configuration`.
+6. Set Site URL for local testing:
+
+```text
+http://127.0.0.1:8000
+```
+
+7. Add this Redirect URL:
+
+```text
+http://127.0.0.1:8000
+```
+
+8. For Google login, go to `Authentication` -> `Providers` -> `Google`, enable it, and add your Google Client ID and Client Secret. Google must also allow the Supabase callback URL shown on that provider page.
+
 API endpoint used by the UI:
 
 ```text
@@ -379,11 +425,15 @@ The latest code hardening pass fixed the main review findings before deployment:
 
 - Frontend recommendation cards now render dynamic API data using DOM text nodes instead of `innerHTML`.
 - API tests cover health, recommendations, chat fallback, invalid input, CORS config, and chat history limits.
+- The active match-score model loads from the committed model artifact and no longer requires ignored raw datasets at runtime.
+- The API validates string lengths, list sizes, numeric upper bounds, and experienced-user profile fields.
 - Chat history is passed to the assistant and capped so long sessions do not overload the API.
-- CORS is controlled through environment variables instead of allowing every origin by default.
+- CORS is controlled through environment variables and restricted to the required methods and headers.
+- Chat requests have a basic in-memory rate limit for public testing.
 - The response field is now `match_score` to avoid presenting the hybrid ranking score as calibrated probability.
 - Dependencies are pinned in `requirements.txt`, including Jupyter and pytest for reproducible setup.
 - Model feature constants now match the active 50K Linear SVM/XGBoost training schema.
+- Docker and GitHub Actions CI files are included for reproducible deployment checks.
 
 See `docs/production_readiness.md` for the checklist and validation commands.
 
@@ -399,13 +449,23 @@ Create a local `.env` file in the project root:
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.1-8b-instant
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_public_key
+CAREER_ENGINE_API_URL=https://your-render-service.onrender.com
 CAREER_ENGINE_ALLOWED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
 CAREER_ENGINE_ALLOW_CREDENTIALS=false
+CAREER_ENGINE_REQUIRE_AUTH=true
+CAREER_ENGINE_ENABLE_DOCS=true
+CAREER_ENGINE_CHAT_RATE_LIMIT=20
+CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS=60
+CAREER_ENGINE_AUTH_CACHE_SECONDS=300
 ```
 
 `.env` is ignored by Git and should never be committed.
 
 For deployment, replace `CAREER_ENGINE_ALLOWED_ORIGINS` with the real frontend domain. Avoid using `*` in production. If `*` is used for temporary testing, credentials are automatically disabled by the API configuration.
+Keep `CAREER_ENGINE_REQUIRE_AUTH=true` for deployment so recommendation and chat APIs require a valid Supabase session.
+Set `CAREER_ENGINE_ENABLE_DOCS=false` on public deployments if you do not want Swagger/OpenAPI exposed.
 
 The Groq assistant is restricted to:
 

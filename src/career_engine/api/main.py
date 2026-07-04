@@ -1,18 +1,33 @@
 import os
+import base64
+import json
+from contextlib import asynccontextmanager
 from pathlib import Path
+from time import monotonic, time
+from urllib.error import HTTPError, URLError
+from urllib.request import Request as UrlRequest, urlopen
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from career_engine.api.schemas import ChatRequest, ChatResponse, RecommendationResponse, StudentProfileRequest
-from career_engine.ml.model import DatasetNotFoundError, get_recommendations
+from career_engine.ml.model import DatasetNotFoundError, get_recommendations, load_career_catalog, load_match_model
 from career_engine.services.assistant import answer_question
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 DEFAULT_ALLOWED_ORIGINS = ["http://127.0.0.1:8000", "http://localhost:8000"]
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "").strip()
+REQUIRE_AUTH = os.getenv("CAREER_ENGINE_REQUIRE_AUTH", "true").strip().lower() == "true"
+CHAT_RATE_LIMIT = int(os.getenv("CAREER_ENGINE_CHAT_RATE_LIMIT", "20"))
+CHAT_RATE_WINDOW_SECONDS = int(os.getenv("CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS", "60"))
+AUTH_CACHE_SECONDS = int(os.getenv("CAREER_ENGINE_AUTH_CACHE_SECONDS", "300"))
+ENABLE_DOCS = os.getenv("CAREER_ENGINE_ENABLE_DOCS", "true").strip().lower() == "true"
+chat_request_log: dict[str, list[float]] = {}
+auth_token_cache: dict[str, tuple[float, dict[str, object]]] = {}
 
 
 def allowed_origins_from_env() -> list[str]:
@@ -30,16 +45,96 @@ def cors_credentials_enabled(allowed_origins: list[str]) -> bool:
     return os.getenv("CAREER_ENGINE_ALLOW_CREDENTIALS", "false").strip().lower() == "true"
 
 
-app = FastAPI(title="Rajora Career Engine", version="0.2.0")
+def jwt_payload(token: str) -> dict[str, object]:
+    try:
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        return json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
+    except (IndexError, ValueError, json.JSONDecodeError):
+        return {}
+
+
+def supabase_public_configured() -> bool:
+    return bool(SUPABASE_URL and SUPABASE_ANON_KEY and jwt_payload(SUPABASE_ANON_KEY).get("role") == "anon")
+
+
+def verify_supabase_token(authorization: str | None = Header(default=None)) -> dict[str, object]:
+    if not REQUIRE_AUTH:
+        return {}
+    if not supabase_public_configured():
+        raise HTTPException(status_code=503, detail="Authentication is not configured.")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    token = authorization.removeprefix("Bearer ").strip()
+    now = monotonic()
+    cached = auth_token_cache.get(token)
+    if cached and cached[0] > now:
+        return cached[1]
+
+    request = UrlRequest(
+        f"{SUPABASE_URL}/auth/v1/user",
+        headers={
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    try:
+        with urlopen(request, timeout=8) as response:
+            user = json.loads(response.read().decode("utf-8"))
+            token_exp = jwt_payload(token).get("exp")
+            ttl = AUTH_CACHE_SECONDS
+            if isinstance(token_exp, int):
+                ttl = max(0, min(ttl, token_exp - int(time())))
+            if ttl > 0:
+                auth_token_cache[token] = (now + ttl, user)
+            return user
+    except HTTPError as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired session.") from exc
+    except URLError as exc:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable.") from exc
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_match_model()
+    load_career_catalog()
+    yield
+
+
+app = FastAPI(
+    title="Rajora Career Engine",
+    version="0.2.0",
+    lifespan=lifespan,
+    docs_url="/docs" if ENABLE_DOCS else None,
+    redoc_url="/redoc" if ENABLE_DOCS else None,
+    openapi_url="/openapi.json" if ENABLE_DOCS else None,
+)
 allowed_origins = allowed_origins_from_env()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=cors_credentials_enabled(allowed_origins),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+
+
+def enforce_chat_rate_limit(request: Request) -> None:
+    client_host = request.client.host if request.client else "unknown"
+    now = monotonic()
+    recent = [
+        timestamp
+        for timestamp in chat_request_log.get(client_host, [])
+        if now - timestamp < CHAT_RATE_WINDOW_SECONDS
+    ]
+
+    if len(recent) >= CHAT_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many chat requests. Please try again shortly.")
+
+    recent.append(now)
+    chat_request_log[client_host] = recent
 
 
 @app.get("/api/health")
@@ -47,8 +142,18 @@ def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/config")
+def public_config() -> dict[str, str | bool]:
+    configured = supabase_public_configured()
+    return {
+        "supabase_configured": configured,
+        "supabase_url": SUPABASE_URL,
+        "supabase_anon_key": SUPABASE_ANON_KEY if configured else "",
+    }
+
+
 @app.post("/api/recommend", response_model=RecommendationResponse)
-def recommend(profile: StudentProfileRequest) -> RecommendationResponse:
+def recommend(profile: StudentProfileRequest, user: dict[str, object] = Depends(verify_supabase_token)) -> RecommendationResponse:
     try:
         recommendations = get_recommendations(profile)
     except DatasetNotFoundError as exc:
@@ -58,7 +163,12 @@ def recommend(profile: StudentProfileRequest) -> RecommendationResponse:
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
+def chat(
+    request: ChatRequest,
+    http_request: Request,
+    user: dict[str, object] = Depends(verify_supabase_token),
+) -> ChatResponse:
+    enforce_chat_rate_limit(http_request)
     return ChatResponse(
         answer=answer_question(
             message=request.message,

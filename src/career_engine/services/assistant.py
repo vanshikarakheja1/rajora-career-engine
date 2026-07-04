@@ -14,6 +14,56 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MAX_HISTORY_MESSAGES = 8
 logger = logging.getLogger(__name__)
 
+CAREER_TERMS = {
+    "career",
+    "recommendation",
+    "recommended",
+    "skill",
+    "skills",
+    "roadmap",
+    "learn",
+    "project",
+    "portfolio",
+    "internship",
+    "job",
+    "profile",
+    "education",
+    "branch",
+    "specialization",
+    "salary",
+    "resume",
+    "interview",
+    "path",
+    "goal",
+    "missing",
+    "gap",
+    "why",
+    "best",
+    "compare",
+    "next",
+    "course",
+    "certification",
+    "switch",
+    "experience",
+    "role",
+    "work",
+    "road map",
+}
+
+IRRELEVANT_TERMS = {
+    "weather",
+    "movie",
+    "song",
+    "sports",
+    "cricket",
+    "politics",
+    "recipe",
+    "joke",
+    "game",
+    "news",
+    "travel",
+}
+
 
 def words(message: str) -> set[str]:
     return {part.strip(".,!?;:()[]{}").lower() for part in message.split()}
@@ -55,36 +105,19 @@ def recommendation_context(
     return f"Student profile:\n{profile_text}\n\nRecommendations:\n{recommendations_text}"
 
 
+def question_category(message: str) -> str:
+    message_words = words(message)
+    if message_words.intersection({"hello", "hi", "hey"}):
+        return "greeting"
+    if message_words.intersection(IRRELEVANT_TERMS) and not message_words.intersection(CAREER_TERMS):
+        return "irrelevant"
+    if message_words.intersection(CAREER_TERMS):
+        return "career"
+    return "unclear"
+
+
 def is_career_related(message: str) -> bool:
-    allowed_terms = {
-        "career",
-        "recommendation",
-        "recommended",
-        "skill",
-        "skills",
-        "roadmap",
-        "learn",
-        "project",
-        "portfolio",
-        "internship",
-        "job",
-        "profile",
-        "education",
-        "branch",
-        "specialization",
-        "salary",
-        "resume",
-        "interview",
-        "path",
-        "goal",
-        "missing",
-        "gap",
-        "why",
-        "best",
-        "compare",
-        "next",
-    }
-    return bool(words(message).intersection(allowed_terms))
+    return question_category(message) in {"career", "greeting"}
 
 
 def recent_history(history: list[ChatMessage]) -> list[ChatMessage]:
@@ -104,9 +137,9 @@ def groq_messages(
                 "You are the Rajora Career Engine assistant. Answer only about the user's profile, "
                 "career recommendations, skill gaps, roadmaps, projects, internships, resumes, "
                 "interview preparation, and how this recommendation system works. Be helpful, "
-                "specific, and practical for Indian students. If the user asks unrelated questions, "
-                "politely refuse and redirect to career guidance. Do not invent model scores or "
-                "recommendations beyond the provided context."
+                "specific, concise, and practical. First classify the user's message as career-related "
+                "or unrelated. If unrelated, refuse briefly and redirect to career guidance. Do not "
+                "invent model scores or recommendations beyond the provided context."
             ),
         },
         {
@@ -159,6 +192,13 @@ def answer_question(
     history: list[ChatMessage] | None = None,
 ) -> str:
     history = history or []
+    category = question_category(message)
+    if category == "irrelevant":
+        return (
+            "That question is outside this career recommender. I can help with your recommended paths, "
+            "skill gaps, roadmap, projects, internships, resumes, and interview preparation."
+        )
+
     ai_answer = groq_answer(message, profile, recommendations, history)
     if ai_answer:
         return ai_answer
@@ -167,7 +207,7 @@ def answer_question(
     question_words = words(message)
     top = top_recommendation(recommendations)
 
-    if question_words.intersection({"hello", "hi", "hey"}):
+    if category == "greeting":
         return (
             "Hi. I can help you understand your career recommendations, missing skills, "
             "and what to do next. Run a recommendation first for the most useful answers."
@@ -177,6 +217,12 @@ def answer_question(
         return (
             "I need your recommendation result before I can explain a career path deeply. "
             "Fill the profile form, select your skills and interests, then click Recommend Careers."
+        )
+
+    if category == "unclear":
+        return (
+            "I can answer career-related questions here. Ask about why a path was recommended, "
+            "which skills to build, how to compare paths, or what roadmap to follow."
         )
 
     if any(word in question for word in ["why", "reason", "recommended", "suggested"]):
@@ -201,6 +247,20 @@ def answer_question(
     if any(word in question for word in ["best", "top", "career"]):
         careers = ", ".join(item.career for item in recommendations[:5])
         return f"Your current top career paths are: {careers}. The strongest current match is {top.career}."
+
+    if any(word in question for word in ["compare", "difference", "choose"]):
+        first_paths = recommendations[:3]
+        summary = "; ".join(
+            f"{item.career}: {round(item.match_score * 100)}% match, gaps: {join_or_empty(item.missing_skills[:3])}"
+            for item in first_paths
+        )
+        return f"Compare your top options like this: {summary}. Choose the path with the best balance of interest, current skills, and willingness to build the missing skills."
+
+    if any(word in question for word in ["project", "portfolio"]):
+        return (
+            f"For {top.career}, build one portfolio project that uses {join_or_empty((top.matched_skills + top.missing_skills)[:4])}. "
+            "Keep the scope small, document the problem, tools, result, and what you learned."
+        )
 
     if any(word in question for word in ["profile", "my skills", "about me"]) and profile:
         return (

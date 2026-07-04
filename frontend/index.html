@@ -8,14 +8,66 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="app-shell">
+    <section class="auth-shell" id="authShell">
+      <div class="auth-visual" aria-hidden="true">
+        <p class="eyebrow">Rajora AI</p>
+        <h1>Career guidance that starts with your profile.</h1>
+        <p>Sign in to save your profile, review recommendations, and continue career planning with the assistant.</p>
+      </div>
+
+      <section class="auth-panel" aria-labelledby="authTitle">
+        <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+          <button class="auth-tab active" id="loginTab" type="button" role="tab" aria-selected="true">Login</button>
+          <button class="auth-tab" id="signupTab" type="button" role="tab" aria-selected="false">Sign Up</button>
+        </div>
+
+        <form class="auth-form" id="authForm" novalidate>
+          <div>
+            <p class="eyebrow" id="authModeLabel">Welcome Back</p>
+            <h2 id="authTitle">Login to Rajora Career Engine</h2>
+            <p class="muted" id="authSubtitle">Use your email to continue your recommendation session.</p>
+          </div>
+
+          <div class="auth-error" id="authError" role="alert" hidden></div>
+
+          <label id="nameField" hidden>
+            Full Name
+            <input id="authName" name="name" type="text" autocomplete="name" maxlength="80" />
+          </label>
+
+          <label>
+            Email
+            <input id="authEmail" name="email" type="email" autocomplete="email" maxlength="120" required />
+          </label>
+
+          <label>
+            Password
+            <input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="72" required />
+          </label>
+
+          <button class="primary-button" id="authSubmitButton" type="submit">Login</button>
+
+          <div class="auth-divider"><span>or</span></div>
+
+          <button class="google-button" id="googleAuthButton" type="button">
+            <span class="google-mark">G</span>
+            Continue with Google
+          </button>
+        </form>
+      </section>
+    </section>
+
+    <main class="app-shell" id="appShell" hidden>
       <section class="panel input-panel">
         <div class="brand-row">
           <div>
             <p class="eyebrow">Rajora AI</p>
             <h1>Career Engine</h1>
           </div>
-          <span class="status-pill" id="apiStatus">Checking</span>
+          <div class="app-actions">
+            <span class="status-pill" id="apiStatus">Checking</span>
+            <button class="secondary-button" id="logoutButton" type="button">Logout</button>
+          </div>
         </div>
 
         <form id="profileForm" class="profile-form">
@@ -91,6 +143,26 @@
           <div class="section-title">Experience</div>
           <div class="grid three">
             <label>
+              Profile Type
+              <select name="user_type">
+                <option value="Student">Student</option>
+                <option value="Fresher">Fresher</option>
+                <option value="Experienced">Experienced</option>
+                <option value="Career Switcher">Career Switcher</option>
+              </select>
+            </label>
+            <label>
+              Age
+              <input name="age" type="number" min="13" max="80" value="21" />
+            </label>
+            <label>
+              Years Experience
+              <input name="years_experience" type="number" min="0" max="60" step="0.5" value="0" />
+            </label>
+          </div>
+
+          <div class="grid three">
+            <label>
               Projects
               <input name="total_projects" type="number" min="0" value="3" />
             </label>
@@ -139,6 +211,17 @@
             </label>
           </div>
 
+          <div class="grid two">
+            <label>
+              Current Role
+              <input name="current_role" type="text" value="Student" />
+            </label>
+            <label>
+              Location Preference
+              <input name="location_preference" type="text" value="India" />
+            </label>
+          </div>
+
           <label>
             Career Goal
             <input name="career_goal" type="text" value="Data Scientist" list="careerGoalSuggestions" />
@@ -180,7 +263,7 @@
       </section>
     </main>
 
-    <aside class="floating-assistant" id="assistantWidget">
+    <aside class="floating-assistant" id="assistantWidget" hidden>
       <button class="assistant-toggle" id="assistantToggle" type="button" aria-expanded="true">
         <span>Assistant</span>
         <span id="assistantToggleIcon">-</span>
@@ -204,6 +287,7 @@
       </div>
     </aside>
 
+    <script src="/config.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>

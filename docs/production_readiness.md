@@ -18,9 +18,10 @@ This document tracks the hardening work completed after the code review.
    - The assistant now receives conversation history for better multi-turn answers.
 
 4. CORS configuration
-   - CORS origins are read from `CAREER_ENGINE_ALLOWED_ORIGINS`.
-   - Credentials are disabled by default.
-   - If a wildcard origin is used for temporary testing, credentials remain disabled.
+    - CORS origins are read from `CAREER_ENGINE_ALLOWED_ORIGINS`.
+    - Credentials are disabled by default.
+    - If a wildcard origin is used for temporary testing, credentials remain disabled.
+    - Allowed methods and headers are restricted to the API's current needs.
 
 5. Match score naming
    - The recommendation API now returns `match_score`.
@@ -31,8 +32,18 @@ This document tracks the hardening work completed after the code review.
    - Jupyter, Notebook, and pytest are included so another device can run notebooks and tests.
 
 7. Active model feature schema
-   - `src/career_engine/ml/features.py` now contains the active 50K model feature contract.
-   - Linear SVM and XGBoost training scripts import this shared schema.
+    - `src/career_engine/ml/features.py` now contains the active 50K model feature contract.
+    - Linear SVM and XGBoost training scripts import this shared schema.
+
+8. Deployment model loading
+   - The active match-score model loads from `models/career_match_score_regressor.joblib`.
+   - The committed artifact contains the career catalog snapshot, so raw datasets are not required at runtime.
+
+9. Production safety controls
+   - Recommendation payloads now have bounded strings, bounded lists, and numeric upper limits.
+   - The API accepts student and experienced-user profile fields.
+   - Chat requests have a basic in-memory rate limit for public demos.
+   - Docker and GitHub Actions CI files are included.
 
 ## Environment Variables
 
@@ -41,8 +52,15 @@ Create a local `.env` file when running the assistant with Groq:
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.1-8b-instant
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_public_key
 CAREER_ENGINE_ALLOWED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
 CAREER_ENGINE_ALLOW_CREDENTIALS=false
+CAREER_ENGINE_REQUIRE_AUTH=true
+CAREER_ENGINE_ENABLE_DOCS=true
+CAREER_ENGINE_CHAT_RATE_LIMIT=20
+CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS=60
+CAREER_ENGINE_AUTH_CACHE_SECONDS=300
 ```
 
 For deployment, set `CAREER_ENGINE_ALLOWED_ORIGINS` to the deployed frontend domain.
@@ -64,10 +82,21 @@ Then open:
 http://127.0.0.1:8000
 ```
 
+Docker:
+
+```powershell
+docker build -t rajora-career-engine .
+docker run --env-file .env -p 8000:8000 rajora-career-engine
+```
+
 ## Deployment Notes
 
 - Do not commit `.env` files, API keys, local virtual environments, or datasets.
+- Use Supabase Auth for credentials. Do not store user passwords in this repository or local storage.
 - Keep `data/raw/` ignored unless dataset licensing explicitly allows publishing.
 - Use a real production domain in `CAREER_ENGINE_ALLOWED_ORIGINS`.
 - Keep `CAREER_ENGINE_ALLOW_CREDENTIALS=false` unless authentication is added and required.
+- Keep `CAREER_ENGINE_REQUIRE_AUTH=true` so protected API endpoints reject missing or expired sessions.
+- Set `CAREER_ENGINE_ENABLE_DOCS=false` if Swagger/OpenAPI should not be public.
 - Treat `match_score` as a ranking score, not as a probability.
+- Do not copy `data/raw/` into Docker images or public repositories.

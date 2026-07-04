@@ -1,4 +1,5 @@
 from functools import lru_cache
+import json
 from pathlib import Path
 import re
 
@@ -32,7 +33,7 @@ def load_model() -> dict[str, object]:
 
 @lru_cache(maxsize=1)
 def load_match_model() -> dict[str, object] | None:
-    if not MATCH_MODEL_PATH.exists() or not CAREER_CATALOG_PATH.exists():
+    if not MATCH_MODEL_PATH.exists():
         return None
 
     return joblib.load(MATCH_MODEL_PATH)
@@ -132,7 +133,9 @@ def education_score(profile: StudentProfileRequest, education_paths: object) -> 
 
 
 def experience_score(profile: StudentProfileRequest, career_level: object) -> float:
-    experience = max(profile.internship_count, profile.total_projects // 3)
+    experience = profile.years_experience
+    if experience is None:
+        experience = max(profile.internship_count, profile.total_projects // 3)
     level = str(career_level).lower()
 
     if "entry" in level or "beginner" in level:
@@ -143,6 +146,18 @@ def experience_score(profile: StudentProfileRequest, career_level: object) -> fl
         return 0.45 if experience >= 2 else 0.25
 
     return 0.6
+
+
+def profile_age(profile: StudentProfileRequest) -> int:
+    if profile.age is not None:
+        return profile.age
+    return 21 if profile.user_type == "Student" else 25
+
+
+def profile_years_experience(profile: StudentProfileRequest) -> float:
+    if profile.years_experience is not None:
+        return profile.years_experience
+    return float(max(profile.internship_count, profile.total_projects // 3))
 
 
 def career_row_skills(row: pd.Series) -> set[str]:
@@ -193,20 +208,20 @@ def match_model_features(profile: StudentProfileRequest, catalog: pd.DataFrame) 
 
         rows.append(
             {
-                "age": 21,
-                "years_experience": max(profile.internship_count, profile.total_projects // 3),
+                "age": profile_age(profile),
+                "years_experience": profile_years_experience(profile),
                 "salary_expectation": profile.expected_salary_lpa,
                 "skill_match_score": overlap_score(selected_skills, all_skills),
                 "interest_match_score": overlap_score(selected_interests, interests),
                 "education_match_score": education_score(profile, career.get("education_paths")),
                 "experience_match_score": experience_score(profile, career.get("career_level")),
-                "user_type": "Student",
+                "user_type": profile.user_type,
                 "education_level": profile.education_level,
                 "field_of_study": profile.branch,
-                "current_role": "Student",
+                "current_role": profile.current_role or profile.user_type,
                 "preferred_work_style": profile.preferred_work_mode or "Not specified",
                 "preferred_domain": preferred_domain_label,
-                "location_preference": "India",
+                "location_preference": profile.location_preference or "India",
                 "career_domain": career.get("career_domain"),
                 "career_level": career.get("career_level"),
                 "industry": career.get("industry"),
@@ -289,10 +304,16 @@ def get_match_model_recommendations(profile: StudentProfileRequest, limit: int) 
     return recommendations
 
 
-def get_recommendations(profile: StudentProfileRequest, limit: int = 5) -> list[CareerRecommendation]:
+def profile_cache_key(profile: StudentProfileRequest) -> str:
+    return json.dumps(profile.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+
+
+@lru_cache(maxsize=256)
+def get_recommendations_cached(profile_json: str, limit: int) -> tuple[CareerRecommendation, ...]:
+    profile = StudentProfileRequest.model_validate_json(profile_json)
     match_recommendations = get_match_model_recommendations(profile, limit)
     if match_recommendations:
-        return match_recommendations
+        return tuple(match_recommendations)
 
     artifact = load_model()
     model = artifact["model"]
@@ -325,4 +346,8 @@ def get_recommendations(profile: StudentProfileRequest, limit: int = 5) -> list[
             )
         )
 
-    return recommendations
+    return tuple(recommendations)
+
+
+def get_recommendations(profile: StudentProfileRequest, limit: int = 5) -> list[CareerRecommendation]:
+    return [item.model_copy(deep=True) for item in get_recommendations_cached(profile_cache_key(profile), limit)]

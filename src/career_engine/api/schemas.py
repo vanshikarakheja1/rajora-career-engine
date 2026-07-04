@@ -1,25 +1,37 @@
+from typing import Annotated, Literal
+
 from pydantic import BaseModel, Field
 
 
+RequiredText = Annotated[str, Field(min_length=1, max_length=120)]
+OptionalText = Annotated[str, Field(max_length=120)]
+ListText = Annotated[str, Field(min_length=1, max_length=80)]
+
+
 class StudentProfileRequest(BaseModel):
-    education_level: str
-    branch: str
-    specialization: str | None = None
+    education_level: RequiredText
+    branch: RequiredText
+    specialization: OptionalText | None = None
     cgpa: float = Field(ge=0, le=10)
     class_10_percentage: float | None = Field(default=None, ge=0, le=100)
     class_12_percentage: float | None = Field(default=None, ge=0, le=100)
-    total_certifications: int = Field(default=0, ge=0)
-    total_projects: int = Field(default=0, ge=0)
-    internship_count: int = Field(default=0, ge=0)
-    hackathons: int = Field(default=0, ge=0)
-    leetcode_questions: int = Field(default=0, ge=0)
-    github_repositories: int = Field(default=0, ge=0)
-    expected_salary_lpa: float | None = Field(default=None, ge=0)
-    preferred_work_mode: str | None = None
-    career_goal: str | None = None
-    certifications: list[str] = Field(default_factory=list)
-    skills: list[str] = Field(default_factory=list)
-    interests: list[str] = Field(default_factory=list)
+    total_certifications: int = Field(default=0, ge=0, le=500)
+    total_projects: int = Field(default=0, ge=0, le=500)
+    internship_count: int = Field(default=0, ge=0, le=100)
+    hackathons: int = Field(default=0, ge=0, le=500)
+    leetcode_questions: int = Field(default=0, ge=0, le=100000)
+    github_repositories: int = Field(default=0, ge=0, le=10000)
+    expected_salary_lpa: float | None = Field(default=None, ge=0, le=1000)
+    preferred_work_mode: OptionalText | None = None
+    career_goal: OptionalText | None = None
+    user_type: Literal["Student", "Fresher", "Experienced", "Career Switcher"] = "Student"
+    age: int | None = Field(default=None, ge=13, le=80)
+    years_experience: float | None = Field(default=None, ge=0, le=60)
+    current_role: OptionalText | None = None
+    location_preference: OptionalText | None = "India"
+    certifications: list[ListText] = Field(default_factory=list, max_length=30)
+    skills: list[ListText] = Field(default_factory=list, max_length=50)
+    interests: list[ListText] = Field(default_factory=list, max_length=30)
 
 
 class RoadmapStep(BaseModel):

@@ -1,11 +1,13 @@
 from fastapi.testclient import TestClient
 
-from career_engine.api.main import app, allowed_origins_from_env, cors_credentials_enabled
+from career_engine.api.main import app, allowed_origins_from_env, cors_credentials_enabled, verify_supabase_token
 from career_engine.api.schemas import ChatMessage
-from career_engine.services.assistant import MAX_HISTORY_MESSAGES, recent_history
+from career_engine.ml import model as model_module
+from career_engine.services.assistant import MAX_HISTORY_MESSAGES, question_category, recent_history
 
 
 client = TestClient(app)
+app.dependency_overrides[verify_supabase_token] = lambda: {"id": "test-user"}
 
 
 def sample_profile() -> dict[str, object]:
@@ -38,6 +40,13 @@ def test_health_check() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_public_config_shape() -> None:
+    response = client.get("/api/config")
+
+    assert response.status_code == 200
+    assert set(response.json()) == {"supabase_configured", "supabase_url", "supabase_anon_key"}
+
+
 def test_recommend_returns_ranked_paths() -> None:
     response = client.post("/api/recommend", json=sample_profile())
 
@@ -46,6 +55,27 @@ def test_recommend_returns_ranked_paths() -> None:
     assert len(recommendations) == 5
     assert set(recommendations[0]) == {"career", "match_score", "matched_skills", "missing_skills", "roadmap"}
     assert 0 <= recommendations[0]["match_score"] <= 1
+
+
+def test_recommend_requires_authentication() -> None:
+    app.dependency_overrides.pop(verify_supabase_token, None)
+    response = client.post("/api/recommend", json=sample_profile())
+    app.dependency_overrides[verify_supabase_token] = lambda: {"id": "test-user"}
+
+    assert response.status_code in {401, 503}
+
+
+def test_match_model_works_without_raw_catalog(monkeypatch) -> None:
+    model_module.load_match_model.cache_clear()
+    model_module.load_career_catalog.cache_clear()
+    monkeypatch.setattr(model_module, "CAREER_CATALOG_PATH", model_module.PROJECT_ROOT / "data" / "raw" / "missing.csv")
+    monkeypatch.setattr(model_module, "load_model", lambda: (_ for _ in ()).throw(AssertionError("fallback model used")))
+
+    recommendations = model_module.get_recommendations(model_module.StudentProfileRequest(**sample_profile()))
+
+    assert len(recommendations) == 5
+    model_module.load_match_model.cache_clear()
+    model_module.load_career_catalog.cache_clear()
 
 
 def test_chat_fallback_without_recommendations() -> None:
@@ -58,6 +88,15 @@ def test_chat_fallback_without_recommendations() -> None:
 def test_invalid_profile_input_returns_validation_error() -> None:
     payload = sample_profile()
     payload["cgpa"] = 12
+
+    response = client.post("/api/recommend", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_oversized_skill_list_returns_validation_error() -> None:
+    payload = sample_profile()
+    payload["skills"] = [f"skill-{index}" for index in range(51)]
 
     response = client.post("/api/recommend", json=payload)
 
@@ -85,3 +124,8 @@ def test_recent_history_is_capped() -> None:
     assert len(capped) == MAX_HISTORY_MESSAGES
     assert capped[0].content == "message 12"
     assert capped[-1].content == "message 19"
+
+
+def test_assistant_question_classification() -> None:
+    assert question_category("which skills should I learn next") == "career"
+    assert question_category("what is the weather today") == "irrelevant"
