@@ -2,6 +2,12 @@
 
 ## 1. Deploy Backend On Render
 
+Before deploying, create the Supabase database tables:
+
+```text
+Supabase -> SQL Editor -> run supabase/schema.sql
+```
+
 Create a Render web service from this repository.
 
 Use these settings:
@@ -97,4 +103,5 @@ https://vqcxhtczrxftihwxykvc.supabase.co/auth/v1/callback
 2. Login with Supabase email or Google.
 3. Run a recommendation.
 4. Ask the assistant a career-related question.
-5. Try calling the Render `/api/recommend` endpoint without a token and confirm it returns `401`.
+5. Check Supabase `user_profiles` and `recommendation_history` tables for saved rows.
+6. Try calling the Render `/api/recommend` endpoint without a token and confirm it returns `401`.

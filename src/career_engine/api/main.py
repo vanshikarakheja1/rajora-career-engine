@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from career_engine.api.schemas import ChatRequest, ChatResponse, RecommendationResponse, StudentProfileRequest
 from career_engine.ml.model import DatasetNotFoundError, get_recommendations, load_career_catalog, load_match_model
 from career_engine.services.assistant import answer_question
+from career_engine.services.persistence import save_profile_and_recommendations
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -70,7 +71,7 @@ def verify_supabase_token(authorization: str | None = Header(default=None)) -> d
     now = monotonic()
     cached = auth_token_cache.get(token)
     if cached and cached[0] > now:
-        return cached[1]
+        return {**cached[1], "_access_token": token}
 
     request = UrlRequest(
         f"{SUPABASE_URL}/auth/v1/user",
@@ -88,7 +89,7 @@ def verify_supabase_token(authorization: str | None = Header(default=None)) -> d
                 ttl = max(0, min(ttl, token_exp - int(time())))
             if ttl > 0:
                 auth_token_cache[token] = (now + ttl, user)
-            return user
+            return {**user, "_access_token": token}
     except HTTPError as exc:
         raise HTTPException(status_code=401, detail="Invalid or expired session.") from exc
     except URLError as exc:
@@ -159,6 +160,13 @@ def recommend(profile: StudentProfileRequest, user: dict[str, object] = Depends(
     except DatasetNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    save_profile_and_recommendations(
+        supabase_url=SUPABASE_URL,
+        anon_key=SUPABASE_ANON_KEY,
+        user=user,
+        profile=profile,
+        recommendations=recommendations,
+    )
     return RecommendationResponse(recommendations=recommendations)
 
 

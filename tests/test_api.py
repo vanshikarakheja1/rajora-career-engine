@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from career_engine.api import main as main_module
 from career_engine.api.main import app, allowed_origins_from_env, cors_credentials_enabled, verify_supabase_token
 from career_engine.api.schemas import ChatMessage
 from career_engine.ml import model as model_module
@@ -55,6 +56,20 @@ def test_recommend_returns_ranked_paths() -> None:
     assert len(recommendations) == 5
     assert set(recommendations[0]) == {"career", "match_score", "matched_skills", "missing_skills", "roadmap"}
     assert 0 <= recommendations[0]["match_score"] <= 1
+
+
+def test_recommend_saves_profile_and_recommendations(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(main_module, "SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setattr(main_module, "SUPABASE_ANON_KEY", "anon")
+    monkeypatch.setattr(main_module, "save_profile_and_recommendations", lambda **kwargs: calls.append(kwargs))
+
+    response = client.post("/api/recommend", json=sample_profile())
+
+    assert response.status_code == 200
+    assert len(calls) == 1
+    assert calls[0]["profile"].education_level == "B.Tech"
+    assert len(calls[0]["recommendations"]) == 5
 
 
 def test_recommend_requires_authentication() -> None:
