@@ -175,6 +175,7 @@ function setAuthError(message) {
 }
 
 function showApp() {
+  document.getElementById("startupShell").hidden = true;
   document.getElementById("authShell").hidden = true;
   document.getElementById("appShell").hidden = false;
   document.getElementById("assistantWidget").hidden = false;
@@ -182,6 +183,7 @@ function showApp() {
 }
 
 function showAuth() {
+  document.getElementById("startupShell").hidden = true;
   document.getElementById("authShell").hidden = false;
   document.getElementById("appShell").hidden = true;
   document.getElementById("assistantWidget").hidden = true;
@@ -871,9 +873,11 @@ async function initApp() {
     }
   } catch (error) {
     setAuthError(error.message);
+    showAuth();
+    return;
   }
 
-  if (await restoreSession()) {
+  if (await restoreSession().catch(() => false)) {
     showApp();
   } else {
     showAuth();

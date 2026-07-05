@@ -32,6 +32,21 @@ select {
   display: none !important;
 }
 
+.startup-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(37, 99, 235, 0.08)),
+    var(--bg);
+  padding: 24px;
+  text-align: center;
+}
+
+.startup-shell h1 {
+  margin-bottom: 8px;
+}
+
 .auth-shell {
   display: grid;
   grid-template-columns: minmax(320px, 1fr) minmax(340px, 440px);
