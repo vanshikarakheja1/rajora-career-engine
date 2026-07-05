@@ -65,3 +65,13 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
+
+
+class SessionRequest(BaseModel):
+    access_token: str = Field(min_length=20, max_length=4096)
+    refresh_token: str | None = Field(default=None, max_length=4096)
+    expires_at: int | None = Field(default=None, ge=0)
+
+
+class SessionResponse(BaseModel):
+    authenticated: bool

@@ -8,11 +8,18 @@ from time import monotonic, time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request as UrlRequest, urlopen
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from career_engine.api.schemas import ChatRequest, ChatResponse, RecommendationResponse, StudentProfileRequest
+from career_engine.api.schemas import (
+    ChatRequest,
+    ChatResponse,
+    RecommendationResponse,
+    SessionRequest,
+    SessionResponse,
+    StudentProfileRequest,
+)
 from career_engine.ml.model import DatasetNotFoundError, get_recommendations, load_career_catalog, load_match_model
 from career_engine.services.assistant import answer_question
 from career_engine.services.persistence import save_profile_and_recommendations
@@ -31,6 +38,8 @@ CHAT_RATE_WINDOW_SECONDS = int(os.getenv("CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS
 AUTH_CACHE_SECONDS = int(os.getenv("CAREER_ENGINE_AUTH_CACHE_SECONDS", "300"))
 UPSTASH_REDIS_REST_URL = os.getenv("UPSTASH_REDIS_REST_URL", "").strip()
 UPSTASH_REDIS_REST_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
+COOKIE_SECURE = os.getenv("CAREER_ENGINE_COOKIE_SECURE", "false").strip().lower() == "true"
+COOKIE_SAMESITE = os.getenv("CAREER_ENGINE_COOKIE_SAMESITE", "lax").strip().lower()
 ENABLE_DOCS = os.getenv("CAREER_ENGINE_ENABLE_DOCS", "true").strip().lower() == "true"
 auth_token_cache: dict[str, tuple[float, dict[str, object]]] = {}
 
@@ -63,15 +72,7 @@ def supabase_public_configured() -> bool:
     return bool(SUPABASE_URL and SUPABASE_ANON_KEY and jwt_payload(SUPABASE_ANON_KEY).get("role") == "anon")
 
 
-def verify_supabase_token(authorization: str | None = Header(default=None)) -> dict[str, object]:
-    if not REQUIRE_AUTH:
-        return {}
-    if not supabase_public_configured():
-        raise HTTPException(status_code=503, detail="Authentication is not configured.")
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required.")
-
-    token = authorization.removeprefix("Bearer ").strip()
+def verify_token_value(token: str) -> dict[str, object]:
     now = monotonic()
     cached = auth_token_cache.get(token)
     if cached and cached[0] > now:
@@ -98,6 +99,58 @@ def verify_supabase_token(authorization: str | None = Header(default=None)) -> d
         raise HTTPException(status_code=401, detail="Invalid or expired session.") from exc
     except URLError as exc:
         raise HTTPException(status_code=503, detail="Authentication service unavailable.") from exc
+
+
+def verify_supabase_token(
+    authorization: str | None = Header(default=None),
+    cookie_access_token: str | None = Cookie(default=None, alias="ce_access_token"),
+) -> dict[str, object]:
+    if not REQUIRE_AUTH:
+        return {}
+    if not supabase_public_configured():
+        raise HTTPException(status_code=503, detail="Authentication is not configured.")
+
+    token = cookie_access_token or ""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    return verify_token_value(token)
+
+
+def cookie_max_age(expires_at: int | None) -> int:
+    if not expires_at:
+        return 3600
+    return max(60, min(60 * 60 * 24 * 7, expires_at - int(time())))
+
+
+def set_session_cookies(response: Response, session: SessionRequest) -> None:
+    access_max_age = cookie_max_age(session.expires_at)
+    response.set_cookie(
+        key="ce_access_token",
+        value=session.access_token,
+        max_age=access_max_age,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        path="/",
+    )
+    if session.refresh_token:
+        response.set_cookie(
+            key="ce_refresh_token",
+            value=session.refresh_token,
+            max_age=60 * 60 * 24 * 30,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite=COOKIE_SAMESITE,
+            path="/",
+        )
+
+
+def clear_session_cookies(response: Response) -> None:
+    for key in ["ce_access_token", "ce_refresh_token"]:
+        response.delete_cookie(key=key, path="/", secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE)
 
 
 @asynccontextmanager
@@ -152,6 +205,26 @@ def public_config() -> dict[str, str | bool]:
         "supabase_url": SUPABASE_URL,
         "supabase_anon_key": SUPABASE_ANON_KEY if configured else "",
     }
+
+
+@app.post("/api/session", response_model=SessionResponse)
+def create_session(session: SessionRequest, response: Response) -> SessionResponse:
+    if not supabase_public_configured():
+        raise HTTPException(status_code=503, detail="Authentication is not configured.")
+    verify_token_value(session.access_token)
+    set_session_cookies(response, session)
+    return SessionResponse(authenticated=True)
+
+
+@app.get("/api/session/me", response_model=SessionResponse)
+def session_me(user: dict[str, object] = Depends(verify_supabase_token)) -> SessionResponse:
+    return SessionResponse(authenticated=bool(user))
+
+
+@app.post("/api/session/logout", response_model=SessionResponse)
+def destroy_session(response: Response) -> SessionResponse:
+    clear_session_cookies(response)
+    return SessionResponse(authenticated=False)
 
 
 @app.post("/api/recommend", response_model=RecommendationResponse)

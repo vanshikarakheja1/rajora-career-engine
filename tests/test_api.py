@@ -49,6 +49,28 @@ def test_public_config_shape() -> None:
     assert set(response.json()) == {"supabase_configured", "supabase_url", "supabase_anon_key"}
 
 
+def test_session_cookie_is_set_and_cleared(monkeypatch) -> None:
+    monkeypatch.setattr(main_module, "SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setattr(main_module, "SUPABASE_ANON_KEY", "header.payload.signature")
+    monkeypatch.setattr(main_module, "supabase_public_configured", lambda: True)
+    monkeypatch.setattr(main_module, "verify_token_value", lambda token: {"id": "test-user", "_access_token": token})
+
+    response = client.post(
+        "/api/session",
+        json={"access_token": "test-access-token-value", "refresh_token": "test-refresh-token-value", "expires_at": 4102444800},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"authenticated": True}
+    assert "ce_access_token" in response.headers["set-cookie"]
+    assert "HttpOnly" in response.headers["set-cookie"]
+
+    logout_response = client.post("/api/session/logout")
+
+    assert logout_response.status_code == 200
+    assert "ce_access_token" in logout_response.headers["set-cookie"]
+
+
 def test_recommend_returns_ranked_paths() -> None:
     response = client.post("/api/recommend", json=sample_profile())
 

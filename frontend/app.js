@@ -77,7 +77,6 @@ const interests = [
 const defaultSkills = new Set(["python", "sql", "machine_learning", "data_analysis", "git", "communication"]);
 const defaultInterests = new Set(["ai", "data_science"]);
 const maxChatHistory = 20;
-const authSessionKey = "rajora_auth_session";
 const runtimeConfig = window.CAREER_ENGINE_CONFIG || {};
 const apiBaseUrl = String(runtimeConfig.apiBaseUrl || "").replace(/\/$/, "");
 const selectedSkills = new Map(skills.filter(([value]) => defaultSkills.has(value)));
@@ -91,25 +90,18 @@ function apiUrl(path) {
   return `${apiBaseUrl}${path}`;
 }
 
-function currentSession() {
-  try {
-    const session = JSON.parse(localStorage.getItem(authSessionKey));
-    if (!session) {
-      return null;
-    }
-    if (session.expires_at && Number(session.expires_at) * 1000 <= Date.now()) {
-      localStorage.removeItem(authSessionKey);
-      return null;
-    }
-    return session;
-  } catch {
-    localStorage.removeItem(authSessionKey);
-    return null;
-  }
+function apiFetch(path, options = {}) {
+  return fetch(apiUrl(path), {
+    ...options,
+    credentials: "include",
+    headers: {
+      ...(options.headers || {}),
+    },
+  });
 }
 
 async function loadAuthConfig() {
-  const response = await fetch(apiUrl("/api/config"));
+  const response = await apiFetch("/api/config");
   if (!response.ok) {
     throw new Error("Unable to load authentication configuration.");
   }
@@ -137,54 +129,25 @@ async function supabaseAuthRequest(path, options = {}) {
   return data;
 }
 
-async function fetchSupabaseUser(accessToken) {
-  const response = await fetch(`${authConfig.supabase_url}/auth/v1/user`, {
-    headers: {
-      apikey: authConfig.supabase_anon_key,
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-  if (!response.ok) {
-    return null;
-  }
-  return response.json();
-}
-
-function authHeaders() {
-  const session = currentSession();
-  if (!session?.access_token) {
-    return {};
-  }
-  return { Authorization: `Bearer ${session.access_token}` };
-}
-
 async function restoreSession() {
-  const session = currentSession();
-  if (!session) {
-    return false;
-  }
-  if (session.provider === "local-demo") {
-    return !supabaseConfigured();
-  }
-  if (!session.access_token || !(await fetchSupabaseUser(session.access_token))) {
-    localStorage.removeItem(authSessionKey);
-    return false;
-  }
-  return true;
+  const response = await apiFetch("/api/session/me");
+  return response.ok;
 }
 
-function saveSession(session, user = null) {
-  localStorage.setItem(
-    authSessionKey,
-    JSON.stringify({
-      provider: "supabase",
+async function createBackendSession(session) {
+  const response = await apiFetch("/api/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       access_token: session.access_token,
       refresh_token: session.refresh_token,
       expires_at: session.expires_at,
-      user: user || session.user || null,
-      signedInAt: new Date().toISOString(),
     }),
-  );
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || "Unable to create secure session.");
+  }
 }
 
 async function handleAuthRedirect() {
@@ -199,8 +162,7 @@ async function handleAuthRedirect() {
     refresh_token: params.get("refresh_token"),
     expires_at: Number(params.get("expires_at")) || null,
   };
-  const user = await fetchSupabaseUser(accessToken);
-  saveSession(session, user);
+  await createBackendSession(session);
   history.replaceState(null, "", window.location.pathname + window.location.search);
   showApp();
   return true;
@@ -284,12 +246,7 @@ async function authenticateWithEmail() {
 
   try {
     if (!supabaseConfigured()) {
-      localStorage.setItem(
-        authSessionKey,
-        JSON.stringify({ provider: "local-demo", name: name || email.split("@")[0], email, signedInAt: new Date().toISOString() }),
-      );
-      showApp();
-      return;
+      throw new Error("Authentication is not configured.");
     }
 
     if (authMode === "signup") {
@@ -307,13 +264,13 @@ async function authenticateWithEmail() {
         setAuthError("Account created. Check your email to confirm your Supabase account, then login.");
         return;
       }
-      saveSession(data.session || data, data.user);
+      await createBackendSession(data.session || data);
     } else {
       const data = await supabaseAuthRequest("/token?grant_type=password", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      saveSession(data, data.user);
+      await createBackendSession(data);
     }
     showApp();
   } catch (error) {
@@ -333,17 +290,7 @@ function handleGoogleAuth() {
 }
 
 async function logout() {
-  const session = currentSession();
-  if (supabaseConfigured() && session?.access_token) {
-    await fetch(`${authConfig.supabase_url}/auth/v1/logout`, {
-      method: "POST",
-      headers: {
-        apikey: authConfig.supabase_anon_key,
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    }).catch(() => {});
-  }
-  localStorage.removeItem(authSessionKey);
+  await apiFetch("/api/session/logout", { method: "POST" }).catch(() => {});
   showAuth();
 }
 
@@ -779,7 +726,7 @@ async function checkApiStatus() {
   const status = document.getElementById("apiStatus");
 
   try {
-    const response = await fetch(apiUrl("/api/health"));
+    const response = await apiFetch("/api/health");
     if (!response.ok) {
       throw new Error("API unavailable");
     }
@@ -828,9 +775,9 @@ async function submitProfile(event) {
   button.textContent = "Running Prediction";
 
   try {
-    const response = await fetch(apiUrl("/api/recommend"), {
+    const response = await apiFetch("/api/recommend", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
@@ -869,9 +816,9 @@ async function submitChat(event) {
   addChatHistory("user", message);
 
   try {
-    const response = await fetch(apiUrl("/api/chat"), {
+    const response = await apiFetch("/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
         profile: lastProfile,

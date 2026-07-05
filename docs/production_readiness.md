@@ -57,6 +57,8 @@ SUPABASE_ANON_KEY=your_supabase_anon_public_key
 CAREER_ENGINE_ALLOWED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000
 CAREER_ENGINE_ALLOW_CREDENTIALS=false
 CAREER_ENGINE_REQUIRE_AUTH=true
+CAREER_ENGINE_COOKIE_SECURE=false
+CAREER_ENGINE_COOKIE_SAMESITE=lax
 CAREER_ENGINE_ENABLE_DOCS=true
 CAREER_ENGINE_CHAT_RATE_LIMIT=20
 CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS=60
@@ -99,6 +101,7 @@ docker run --env-file .env -p 8000:8000 rajora-career-engine
 - Use a real production domain in `CAREER_ENGINE_ALLOWED_ORIGINS`.
 - Keep `CAREER_ENGINE_ALLOW_CREDENTIALS=false` unless authentication is added and required.
 - Keep `CAREER_ENGINE_REQUIRE_AUTH=true` so protected API endpoints reject missing or expired sessions.
+- Use `CAREER_ENGINE_ALLOW_CREDENTIALS=true`, `CAREER_ENGINE_COOKIE_SECURE=true`, and `CAREER_ENGINE_COOKIE_SAMESITE=none` when the Vercel frontend calls the Render backend.
 - Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` for shared chat rate limiting across backend instances.
 - Set `CAREER_ENGINE_ENABLE_DOCS=false` if Swagger/OpenAPI should not be public.
 - Treat `match_score` as a ranking score, not as a probability.
