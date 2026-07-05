@@ -4,6 +4,7 @@ from career_engine.api import main as main_module
 from career_engine.api.main import app, allowed_origins_from_env, cors_credentials_enabled, verify_supabase_token
 from career_engine.api.schemas import ChatMessage
 from career_engine.ml import model as model_module
+from career_engine.services import rate_limit
 from career_engine.services.assistant import MAX_HISTORY_MESSAGES, question_category, recent_history
 
 
@@ -62,7 +63,11 @@ def test_recommend_saves_profile_and_recommendations(monkeypatch) -> None:
     calls = []
     monkeypatch.setattr(main_module, "SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setattr(main_module, "SUPABASE_ANON_KEY", "anon")
-    monkeypatch.setattr(main_module, "save_profile_and_recommendations", lambda **kwargs: calls.append(kwargs))
+    def fake_save(**kwargs):
+        calls.append(kwargs)
+        return True
+
+    monkeypatch.setattr(main_module, "save_profile_and_recommendations", fake_save)
 
     response = client.post("/api/recommend", json=sample_profile())
 
@@ -70,6 +75,17 @@ def test_recommend_saves_profile_and_recommendations(monkeypatch) -> None:
     assert len(calls) == 1
     assert calls[0]["profile"].education_level == "B.Tech"
     assert len(calls[0]["recommendations"]) == 5
+
+
+def test_recommend_still_returns_when_persistence_fails(monkeypatch) -> None:
+    monkeypatch.setattr(main_module, "SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setattr(main_module, "SUPABASE_ANON_KEY", "anon")
+    monkeypatch.setattr(main_module, "save_profile_and_recommendations", lambda **kwargs: False)
+
+    response = client.post("/api/recommend", json=sample_profile())
+
+    assert response.status_code == 200
+    assert len(response.json()["recommendations"]) == 5
 
 
 def test_recommend_requires_authentication() -> None:
@@ -144,3 +160,31 @@ def test_recent_history_is_capped() -> None:
 def test_assistant_question_classification() -> None:
     assert question_category("which skills should I learn next") == "career"
     assert question_category("what is the weather today") == "irrelevant"
+
+
+def test_local_rate_limiter_blocks_after_limit() -> None:
+    rate_limit.local_request_log.clear()
+
+    assert rate_limit.allow_request("test-client", limit=2, window_seconds=60)
+    assert rate_limit.allow_request("test-client", limit=2, window_seconds=60)
+    assert not rate_limit.allow_request("test-client", limit=2, window_seconds=60)
+
+
+def test_rate_limiter_falls_back_when_shared_store_fails(monkeypatch) -> None:
+    rate_limit.local_request_log.clear()
+    monkeypatch.setattr(rate_limit, "allow_with_upstash", lambda *args, **kwargs: (_ for _ in ()).throw(TimeoutError()))
+
+    assert rate_limit.allow_request(
+        "fallback-client",
+        limit=1,
+        window_seconds=60,
+        upstash_url="https://example.upstash.io",
+        upstash_token="token",
+    )
+    assert not rate_limit.allow_request(
+        "fallback-client",
+        limit=1,
+        window_seconds=60,
+        upstash_url="https://example.upstash.io",
+        upstash_token="token",
+    )

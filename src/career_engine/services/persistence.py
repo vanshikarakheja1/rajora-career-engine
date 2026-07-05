@@ -38,11 +38,12 @@ def save_profile_and_recommendations(
     user: dict[str, object],
     profile: StudentProfileRequest,
     recommendations: list[CareerRecommendation],
-) -> None:
+) -> bool:
     access_token = str(user.get("_access_token") or "")
     user_id = str(user.get("id") or "")
     if not supabase_url or not anon_key or not access_token or not user_id:
-        return
+        logger.warning("Supabase persistence skipped because configuration or user context is incomplete.")
+        return False
 
     profile_payload = profile.model_dump(mode="json")
     recommendations_payload = [item.model_dump(mode="json") for item in recommendations]
@@ -72,5 +73,7 @@ def save_profile_and_recommendations(
                 "recommendations": recommendations_payload,
             },
         )
+        return True
     except (HTTPError, URLError, TimeoutError) as exc:
         logger.warning("Supabase persistence failed: %s", exc)
+        return False

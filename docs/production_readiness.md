@@ -61,6 +61,8 @@ CAREER_ENGINE_ENABLE_DOCS=true
 CAREER_ENGINE_CHAT_RATE_LIMIT=20
 CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS=60
 CAREER_ENGINE_AUTH_CACHE_SECONDS=300
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
 ```
 
 For deployment, set `CAREER_ENGINE_ALLOWED_ORIGINS` to the deployed frontend domain.
@@ -97,6 +99,7 @@ docker run --env-file .env -p 8000:8000 rajora-career-engine
 - Use a real production domain in `CAREER_ENGINE_ALLOWED_ORIGINS`.
 - Keep `CAREER_ENGINE_ALLOW_CREDENTIALS=false` unless authentication is added and required.
 - Keep `CAREER_ENGINE_REQUIRE_AUTH=true` so protected API endpoints reject missing or expired sessions.
+- Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` for shared chat rate limiting across backend instances.
 - Set `CAREER_ENGINE_ENABLE_DOCS=false` if Swagger/OpenAPI should not be public.
 - Treat `match_score` as a ranking score, not as a probability.
 - Do not copy `data/raw/` into Docker images or public repositories.

@@ -1,6 +1,7 @@
 import os
 import base64
 import json
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from time import monotonic, time
@@ -15,8 +16,10 @@ from career_engine.api.schemas import ChatRequest, ChatResponse, RecommendationR
 from career_engine.ml.model import DatasetNotFoundError, get_recommendations, load_career_catalog, load_match_model
 from career_engine.services.assistant import answer_question
 from career_engine.services.persistence import save_profile_and_recommendations
+from career_engine.services.rate_limit import allow_request
 
 
+logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 DEFAULT_ALLOWED_ORIGINS = ["http://127.0.0.1:8000", "http://localhost:8000"]
@@ -26,8 +29,9 @@ REQUIRE_AUTH = os.getenv("CAREER_ENGINE_REQUIRE_AUTH", "true").strip().lower() =
 CHAT_RATE_LIMIT = int(os.getenv("CAREER_ENGINE_CHAT_RATE_LIMIT", "20"))
 CHAT_RATE_WINDOW_SECONDS = int(os.getenv("CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS", "60"))
 AUTH_CACHE_SECONDS = int(os.getenv("CAREER_ENGINE_AUTH_CACHE_SECONDS", "300"))
+UPSTASH_REDIS_REST_URL = os.getenv("UPSTASH_REDIS_REST_URL", "").strip()
+UPSTASH_REDIS_REST_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
 ENABLE_DOCS = os.getenv("CAREER_ENGINE_ENABLE_DOCS", "true").strip().lower() == "true"
-chat_request_log: dict[str, list[float]] = {}
 auth_token_cache: dict[str, tuple[float, dict[str, object]]] = {}
 
 
@@ -124,18 +128,15 @@ app.add_middleware(
 
 def enforce_chat_rate_limit(request: Request) -> None:
     client_host = request.client.host if request.client else "unknown"
-    now = monotonic()
-    recent = [
-        timestamp
-        for timestamp in chat_request_log.get(client_host, [])
-        if now - timestamp < CHAT_RATE_WINDOW_SECONDS
-    ]
-
-    if len(recent) >= CHAT_RATE_LIMIT:
+    allowed = allow_request(
+        client_key=client_host,
+        limit=CHAT_RATE_LIMIT,
+        window_seconds=CHAT_RATE_WINDOW_SECONDS,
+        upstash_url=UPSTASH_REDIS_REST_URL,
+        upstash_token=UPSTASH_REDIS_REST_TOKEN,
+    )
+    if not allowed:
         raise HTTPException(status_code=429, detail="Too many chat requests. Please try again shortly.")
-
-    recent.append(now)
-    chat_request_log[client_host] = recent
 
 
 @app.get("/api/health")
@@ -160,13 +161,15 @@ def recommend(profile: StudentProfileRequest, user: dict[str, object] = Depends(
     except DatasetNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    save_profile_and_recommendations(
+    saved = save_profile_and_recommendations(
         supabase_url=SUPABASE_URL,
         anon_key=SUPABASE_ANON_KEY,
         user=user,
         profile=profile,
         recommendations=recommendations,
     )
+    if not saved:
+        logger.warning("Recommendation was generated but was not saved for user_id=%s.", user.get("id", "unknown"))
     return RecommendationResponse(recommendations=recommendations)
 
 
