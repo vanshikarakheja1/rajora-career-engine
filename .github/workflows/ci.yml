@@ -24,7 +24,7 @@ jobs:
           node-version: "22"
 
       - name: Install dependencies
-        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-dev.txt
 
       - name: Compile Python
         run: python -m py_compile run_app.py src/career_engine/api/main.py src/career_engine/api/schemas.py src/career_engine/ml/model.py src/career_engine/ml/features.py src/career_engine/services/assistant.py src/career_engine/services/roadmap.py

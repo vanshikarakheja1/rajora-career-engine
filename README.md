@@ -215,8 +215,10 @@ python -m pip install --upgrade pip
 Install dependencies:
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
+
+Use `requirements.txt` for production deployment and `requirements-dev.txt` for local notebooks, tests, and training scripts.
 
 Run automated tests:
 
@@ -359,7 +361,7 @@ http://127.0.0.1:8000
 If the terminal says `uvicorn is not installed`, activate the project virtual environment or run:
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 Docker option:
@@ -431,7 +433,7 @@ The latest code hardening pass fixed the main review findings before deployment:
 - CORS is controlled through environment variables and restricted to the required methods and headers.
 - Chat, recommendation, and session endpoints have configurable rate limits for public testing.
 - The response field is now `match_score` to avoid presenting the hybrid ranking score as calibrated probability.
-- Dependencies are pinned in `requirements.txt`, including Jupyter and pytest for reproducible setup.
+- Production dependencies are pinned in `requirements.txt`; notebook, test, and training tools are pinned in `requirements-dev.txt`.
 - Model feature constants now match the active 50K Linear SVM/XGBoost training schema.
 - Docker and GitHub Actions CI files are included for reproducible deployment checks.
 

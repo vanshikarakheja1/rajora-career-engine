@@ -28,8 +28,8 @@ This document tracks the hardening work completed after the code review.
    - The UI displays this as a match score instead of a calibrated confidence probability.
 
 6. Reproducible setup
-   - Runtime and development dependencies are pinned in `requirements.txt`.
-   - Jupyter, Notebook, and pytest are included so another device can run notebooks and tests.
+   - Runtime dependencies are pinned in `requirements.txt`.
+   - Notebook, test, and training dependencies are pinned in `requirements-dev.txt`.
 
 7. Active model feature schema
     - `src/career_engine/ml/features.py` now contains the active 50K model feature contract.
