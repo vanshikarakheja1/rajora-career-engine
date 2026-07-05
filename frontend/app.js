@@ -85,18 +85,23 @@ let lastRecommendations = [];
 let chatHistory = [];
 let authMode = "login";
 let authConfig = { supabase_configured: false, supabase_url: "", supabase_anon_key: "" };
+let csrfToken = "";
 
 function apiUrl(path) {
   return `${apiBaseUrl}${path}`;
 }
 
 function apiFetch(path, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const headers = { ...(options.headers || {}) };
+  if (!["GET", "HEAD", "OPTIONS"].includes(method) && csrfToken) {
+    headers["X-CSRF-Token"] = csrfToken;
+  }
+
   return fetch(apiUrl(path), {
     ...options,
     credentials: "include",
-    headers: {
-      ...(options.headers || {}),
-    },
+    headers,
   });
 }
 
@@ -131,6 +136,10 @@ async function supabaseAuthRequest(path, options = {}) {
 
 async function restoreSession() {
   const response = await apiFetch("/api/session/me");
+  const data = await response.json().catch(() => ({}));
+  if (response.ok && data.csrf_token) {
+    csrfToken = data.csrf_token;
+  }
   return response.ok;
 }
 
@@ -148,6 +157,7 @@ async function createBackendSession(session) {
   if (!response.ok) {
     throw new Error(data.detail || "Unable to create secure session.");
   }
+  csrfToken = data.csrf_token || "";
 }
 
 async function handleAuthRedirect() {
@@ -293,6 +303,7 @@ function handleGoogleAuth() {
 
 async function logout() {
   await apiFetch("/api/session/logout", { method: "POST" }).catch(() => {});
+  csrfToken = "";
   showAuth();
 }
 

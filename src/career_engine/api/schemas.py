@@ -75,3 +75,4 @@ class SessionRequest(BaseModel):
 
 class SessionResponse(BaseModel):
     authenticated: bool
+    csrf_token: str | None = None

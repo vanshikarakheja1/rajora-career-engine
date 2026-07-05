@@ -12,6 +12,11 @@ client = TestClient(app)
 app.dependency_overrides[verify_supabase_token] = lambda: {"id": "test-user"}
 
 
+def csrf_headers(token: str = "test-csrf-token") -> dict[str, str]:
+    client.cookies.set(main_module.CSRF_COOKIE_NAME, token)
+    return {main_module.CSRF_HEADER_NAME: token}
+
+
 def sample_profile() -> dict[str, object]:
     return {
         "education_level": "B.Tech",
@@ -70,18 +75,20 @@ def test_session_cookie_is_set_and_cleared(monkeypatch) -> None:
     )
 
     assert response.status_code == 200
-    assert response.json() == {"authenticated": True}
+    assert response.json()["authenticated"] is True
+    assert response.json()["csrf_token"]
     assert "ce_access_token" in response.headers["set-cookie"]
+    assert main_module.CSRF_COOKIE_NAME in response.headers["set-cookie"]
     assert "HttpOnly" in response.headers["set-cookie"]
 
-    logout_response = client.post("/api/session/logout")
+    logout_response = client.post("/api/session/logout", headers=csrf_headers(response.json()["csrf_token"]))
 
     assert logout_response.status_code == 200
     assert "ce_access_token" in logout_response.headers["set-cookie"]
 
 
 def test_recommend_returns_ranked_paths() -> None:
-    response = client.post("/api/recommend", json=sample_profile())
+    response = client.post("/api/recommend", json=sample_profile(), headers=csrf_headers())
 
     assert response.status_code == 200
     recommendations = response.json()["recommendations"]
@@ -100,7 +107,7 @@ def test_recommend_saves_profile_and_recommendations(monkeypatch) -> None:
 
     monkeypatch.setattr(main_module, "save_profile_and_recommendations", fake_save)
 
-    response = client.post("/api/recommend", json=sample_profile())
+    response = client.post("/api/recommend", json=sample_profile(), headers=csrf_headers())
 
     assert response.status_code == 200
     assert len(calls) == 1
@@ -113,7 +120,7 @@ def test_recommend_still_returns_when_persistence_fails(monkeypatch) -> None:
     monkeypatch.setattr(main_module, "SUPABASE_ANON_KEY", "anon")
     monkeypatch.setattr(main_module, "save_profile_and_recommendations", lambda **kwargs: False)
 
-    response = client.post("/api/recommend", json=sample_profile())
+    response = client.post("/api/recommend", json=sample_profile(), headers=csrf_headers())
 
     assert response.status_code == 200
     assert len(response.json()["recommendations"]) == 5
@@ -121,10 +128,18 @@ def test_recommend_still_returns_when_persistence_fails(monkeypatch) -> None:
 
 def test_recommend_requires_authentication() -> None:
     app.dependency_overrides.pop(verify_supabase_token, None)
-    response = client.post("/api/recommend", json=sample_profile())
+    response = client.post("/api/recommend", json=sample_profile(), headers=csrf_headers())
     app.dependency_overrides[verify_supabase_token] = lambda: {"id": "test-user"}
 
     assert response.status_code in {401, 503}
+
+
+def test_recommend_rejects_missing_csrf_token() -> None:
+    client.cookies.clear()
+
+    response = client.post("/api/recommend", json=sample_profile())
+
+    assert response.status_code == 403
 
 
 def test_match_model_works_without_raw_catalog(monkeypatch) -> None:
@@ -141,7 +156,7 @@ def test_match_model_works_without_raw_catalog(monkeypatch) -> None:
 
 
 def test_chat_fallback_without_recommendations() -> None:
-    response = client.post("/api/chat", json={"message": "What should I do next?"})
+    response = client.post("/api/chat", json={"message": "What should I do next?"}, headers=csrf_headers())
 
     assert response.status_code == 200
     assert "recommendation result" in response.json()["answer"]
@@ -151,7 +166,7 @@ def test_invalid_profile_input_returns_validation_error() -> None:
     payload = sample_profile()
     payload["cgpa"] = 12
 
-    response = client.post("/api/recommend", json=payload)
+    response = client.post("/api/recommend", json=payload, headers=csrf_headers())
 
     assert response.status_code == 422
 
@@ -160,7 +175,7 @@ def test_oversized_skill_list_returns_validation_error() -> None:
     payload = sample_profile()
     payload["skills"] = [f"skill-{index}" for index in range(51)]
 
-    response = client.post("/api/recommend", json=payload)
+    response = client.post("/api/recommend", json=payload, headers=csrf_headers())
 
     assert response.status_code == 422
 

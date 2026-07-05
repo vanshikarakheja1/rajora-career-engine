@@ -1,8 +1,10 @@
 import os
 import base64
+import secrets
 import json
 import logging
 from contextlib import asynccontextmanager
+from hmac import compare_digest
 from pathlib import Path
 from time import monotonic, time
 from urllib.error import HTTPError, URLError
@@ -41,6 +43,8 @@ UPSTASH_REDIS_REST_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
 COOKIE_SECURE = os.getenv("CAREER_ENGINE_COOKIE_SECURE", "false").strip().lower() == "true"
 COOKIE_SAMESITE = os.getenv("CAREER_ENGINE_COOKIE_SAMESITE", "lax").strip().lower()
 ENABLE_DOCS = os.getenv("CAREER_ENGINE_ENABLE_DOCS", "true").strip().lower() == "true"
+CSRF_COOKIE_NAME = "ce_csrf_token"
+CSRF_HEADER_NAME = "X-CSRF-Token"
 auth_token_cache: dict[str, tuple[float, dict[str, object]]] = {}
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
@@ -143,6 +147,32 @@ def cookie_max_age(expires_at: int | None) -> int:
     return max(60, min(60 * 60 * 24 * 7, expires_at - int(time())))
 
 
+def set_csrf_cookie(response: Response, max_age: int = 60 * 60 * 24 * 7) -> str:
+    token = secrets.token_urlsafe(32)
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value=token,
+        max_age=max_age,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        path="/",
+    )
+    return token
+
+
+def verify_csrf_token(
+    request: Request,
+    csrf_header: str | None = Header(default=None, alias=CSRF_HEADER_NAME),
+) -> None:
+    if not REQUIRE_AUTH:
+        return
+
+    csrf_cookie = request.cookies.get(CSRF_COOKIE_NAME)
+    if not csrf_cookie or not csrf_header or not compare_digest(csrf_cookie, csrf_header):
+        raise HTTPException(status_code=403, detail="Invalid CSRF token.")
+
+
 def set_session_cookies(response: Response, session: SessionRequest) -> None:
     access_max_age = cookie_max_age(session.expires_at)
     response.set_cookie(
@@ -167,7 +197,7 @@ def set_session_cookies(response: Response, session: SessionRequest) -> None:
 
 
 def clear_session_cookies(response: Response) -> None:
-    for key in ["ce_access_token", "ce_refresh_token"]:
+    for key in ["ce_access_token", "ce_refresh_token", CSRF_COOKIE_NAME]:
         response.delete_cookie(key=key, path="/", secure=COOKIE_SECURE, samesite=COOKIE_SAMESITE)
 
 
@@ -193,7 +223,7 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=cors_credentials_enabled(allowed_origins),
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", CSRF_HEADER_NAME],
 )
 
 
@@ -239,22 +269,33 @@ def create_session(session: SessionRequest, response: Response) -> SessionRespon
         raise HTTPException(status_code=503, detail="Authentication is not configured.")
     verify_token_value(session.access_token)
     set_session_cookies(response, session)
-    return SessionResponse(authenticated=True)
+    csrf_token = set_csrf_cookie(response, cookie_max_age(session.expires_at))
+    return SessionResponse(authenticated=True, csrf_token=csrf_token)
 
 
 @app.get("/api/session/me", response_model=SessionResponse)
-def session_me(user: dict[str, object] = Depends(verify_supabase_token)) -> SessionResponse:
-    return SessionResponse(authenticated=bool(user))
+def session_me(
+    response: Response,
+    csrf_token: str | None = Cookie(default=None, alias=CSRF_COOKIE_NAME),
+    user: dict[str, object] = Depends(verify_supabase_token),
+) -> SessionResponse:
+    if REQUIRE_AUTH and not csrf_token:
+        csrf_token = set_csrf_cookie(response)
+    return SessionResponse(authenticated=bool(user), csrf_token=csrf_token)
 
 
 @app.post("/api/session/logout", response_model=SessionResponse)
-def destroy_session(response: Response) -> SessionResponse:
+def destroy_session(response: Response, csrf: None = Depends(verify_csrf_token)) -> SessionResponse:
     clear_session_cookies(response)
     return SessionResponse(authenticated=False)
 
 
 @app.post("/api/recommend", response_model=RecommendationResponse)
-def recommend(profile: StudentProfileRequest, user: dict[str, object] = Depends(verify_supabase_token)) -> RecommendationResponse:
+def recommend(
+    profile: StudentProfileRequest,
+    user: dict[str, object] = Depends(verify_supabase_token),
+    csrf: None = Depends(verify_csrf_token),
+) -> RecommendationResponse:
     try:
         recommendations = get_recommendations(profile)
     except DatasetNotFoundError as exc:
@@ -277,6 +318,7 @@ def chat(
     request: ChatRequest,
     http_request: Request,
     user: dict[str, object] = Depends(verify_supabase_token),
+    csrf: None = Depends(verify_csrf_token),
 ) -> ChatResponse:
     enforce_chat_rate_limit(http_request)
     return ChatResponse(
