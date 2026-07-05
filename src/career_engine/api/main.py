@@ -42,6 +42,24 @@ COOKIE_SECURE = os.getenv("CAREER_ENGINE_COOKIE_SECURE", "false").strip().lower(
 COOKIE_SAMESITE = os.getenv("CAREER_ENGINE_COOKIE_SAMESITE", "lax").strip().lower()
 ENABLE_DOCS = os.getenv("CAREER_ENGINE_ENABLE_DOCS", "true").strip().lower() == "true"
 auth_token_cache: dict[str, tuple[float, dict[str, object]]] = {}
+SECURITY_HEADERS = {
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "base-uri 'self'; "
+        "object-src 'none'; "
+        "frame-ancestors 'none'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "font-src 'self' data:; "
+        "connect-src 'self' https://rajora-career-engine.onrender.com https://*.supabase.co; "
+        "form-action 'self'; "
+        "upgrade-insecure-requests"
+    ),
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+}
 
 
 def allowed_origins_from_env() -> list[str]:
@@ -177,6 +195,14 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for header, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+    return response
 
 
 def enforce_chat_rate_limit(request: Request) -> None:

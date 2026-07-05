@@ -49,6 +49,15 @@ def test_public_config_shape() -> None:
     assert set(response.json()) == {"supabase_configured", "supabase_url", "supabase_anon_key"}
 
 
+def test_security_headers_are_applied() -> None:
+    response = client.get("/api/health")
+
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+    assert "camera=()" in response.headers["permissions-policy"]
+
+
 def test_session_cookie_is_set_and_cleared(monkeypatch) -> None:
     monkeypatch.setattr(main_module, "SUPABASE_URL", "https://example.supabase.co")
     monkeypatch.setattr(main_module, "SUPABASE_ANON_KEY", "header.payload.signature")
