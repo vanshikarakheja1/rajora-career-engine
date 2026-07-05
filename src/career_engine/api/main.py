@@ -37,6 +37,10 @@ SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "").strip()
 REQUIRE_AUTH = os.getenv("CAREER_ENGINE_REQUIRE_AUTH", "true").strip().lower() == "true"
 CHAT_RATE_LIMIT = int(os.getenv("CAREER_ENGINE_CHAT_RATE_LIMIT", "20"))
 CHAT_RATE_WINDOW_SECONDS = int(os.getenv("CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS", "60"))
+SESSION_RATE_LIMIT = int(os.getenv("CAREER_ENGINE_SESSION_RATE_LIMIT", "30"))
+SESSION_ME_RATE_LIMIT = int(os.getenv("CAREER_ENGINE_SESSION_ME_RATE_LIMIT", "60"))
+RECOMMEND_RATE_LIMIT = int(os.getenv("CAREER_ENGINE_RECOMMEND_RATE_LIMIT", "20"))
+API_RATE_WINDOW_SECONDS = int(os.getenv("CAREER_ENGINE_API_RATE_WINDOW_SECONDS", "60"))
 AUTH_CACHE_SECONDS = int(os.getenv("CAREER_ENGINE_AUTH_CACHE_SECONDS", "300"))
 UPSTASH_REDIS_REST_URL = os.getenv("UPSTASH_REDIS_REST_URL", "").strip()
 UPSTASH_REDIS_REST_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
@@ -235,17 +239,27 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
-def enforce_chat_rate_limit(request: Request) -> None:
+def enforce_rate_limit(request: Request, scope: str, limit: int, window_seconds: int, message: str) -> None:
     client_host = request.client.host if request.client else "unknown"
     allowed = allow_request(
-        client_key=client_host,
-        limit=CHAT_RATE_LIMIT,
-        window_seconds=CHAT_RATE_WINDOW_SECONDS,
+        client_key=f"{scope}:{client_host}",
+        limit=limit,
+        window_seconds=window_seconds,
         upstash_url=UPSTASH_REDIS_REST_URL,
         upstash_token=UPSTASH_REDIS_REST_TOKEN,
     )
     if not allowed:
-        raise HTTPException(status_code=429, detail="Too many chat requests. Please try again shortly.")
+        raise HTTPException(status_code=429, detail=message)
+
+
+def enforce_chat_rate_limit(request: Request) -> None:
+    enforce_rate_limit(
+        request=request,
+        scope="chat",
+        limit=CHAT_RATE_LIMIT,
+        window_seconds=CHAT_RATE_WINDOW_SECONDS,
+        message="Too many chat requests. Please try again shortly.",
+    )
 
 
 @app.get("/api/health")
@@ -264,7 +278,14 @@ def public_config() -> dict[str, str | bool]:
 
 
 @app.post("/api/session", response_model=SessionResponse)
-def create_session(session: SessionRequest, response: Response) -> SessionResponse:
+def create_session(session: SessionRequest, response: Response, request: Request) -> SessionResponse:
+    enforce_rate_limit(
+        request=request,
+        scope="session",
+        limit=SESSION_RATE_LIMIT,
+        window_seconds=API_RATE_WINDOW_SECONDS,
+        message="Too many authentication requests. Please try again shortly.",
+    )
     if not supabase_public_configured():
         raise HTTPException(status_code=503, detail="Authentication is not configured.")
     verify_token_value(session.access_token)
@@ -276,9 +297,17 @@ def create_session(session: SessionRequest, response: Response) -> SessionRespon
 @app.get("/api/session/me", response_model=SessionResponse)
 def session_me(
     response: Response,
+    request: Request,
     csrf_token: str | None = Cookie(default=None, alias=CSRF_COOKIE_NAME),
     user: dict[str, object] = Depends(verify_supabase_token),
 ) -> SessionResponse:
+    enforce_rate_limit(
+        request=request,
+        scope="session-me",
+        limit=SESSION_ME_RATE_LIMIT,
+        window_seconds=API_RATE_WINDOW_SECONDS,
+        message="Too many session checks. Please try again shortly.",
+    )
     if REQUIRE_AUTH and not csrf_token:
         csrf_token = set_csrf_cookie(response)
     return SessionResponse(authenticated=bool(user), csrf_token=csrf_token)
@@ -293,9 +322,17 @@ def destroy_session(response: Response, csrf: None = Depends(verify_csrf_token))
 @app.post("/api/recommend", response_model=RecommendationResponse)
 def recommend(
     profile: StudentProfileRequest,
+    request: Request,
     user: dict[str, object] = Depends(verify_supabase_token),
     csrf: None = Depends(verify_csrf_token),
 ) -> RecommendationResponse:
+    enforce_rate_limit(
+        request=request,
+        scope="recommend",
+        limit=RECOMMEND_RATE_LIMIT,
+        window_seconds=API_RATE_WINDOW_SECONDS,
+        message="Too many recommendation requests. Please try again shortly.",
+    )
     try:
         recommendations = get_recommendations(profile)
     except DatasetNotFoundError as exc:

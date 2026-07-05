@@ -30,6 +30,18 @@ services:
         sync: false
       - key: GROQ_MODEL
         value: llama-3.1-8b-instant
+      - key: CAREER_ENGINE_CHAT_RATE_LIMIT
+        value: "20"
+      - key: CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS
+        value: "60"
+      - key: CAREER_ENGINE_SESSION_RATE_LIMIT
+        value: "30"
+      - key: CAREER_ENGINE_SESSION_ME_RATE_LIMIT
+        value: "60"
+      - key: CAREER_ENGINE_RECOMMEND_RATE_LIMIT
+        value: "20"
+      - key: CAREER_ENGINE_API_RATE_WINDOW_SECONDS
+        value: "60"
       - key: UPSTASH_REDIS_REST_URL
         sync: false
       - key: UPSTASH_REDIS_REST_TOKEN

@@ -42,7 +42,7 @@ This document tracks the hardening work completed after the code review.
 9. Production safety controls
    - Recommendation payloads now have bounded strings, bounded lists, and numeric upper limits.
    - The API accepts student and experienced-user profile fields.
-   - Chat requests have a basic in-memory rate limit for public demos.
+   - Chat, recommendation, and session endpoints have rate limits for public demos.
    - Docker and GitHub Actions CI files are included.
 
 ## Environment Variables
@@ -62,6 +62,10 @@ CAREER_ENGINE_COOKIE_SAMESITE=lax
 CAREER_ENGINE_ENABLE_DOCS=true
 CAREER_ENGINE_CHAT_RATE_LIMIT=20
 CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS=60
+CAREER_ENGINE_SESSION_RATE_LIMIT=30
+CAREER_ENGINE_SESSION_ME_RATE_LIMIT=60
+CAREER_ENGINE_RECOMMEND_RATE_LIMIT=20
+CAREER_ENGINE_API_RATE_WINDOW_SECONDS=60
 CAREER_ENGINE_AUTH_CACHE_SECONDS=300
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
@@ -102,7 +106,7 @@ docker run --env-file .env -p 8000:8000 rajora-career-engine
 - Keep `CAREER_ENGINE_ALLOW_CREDENTIALS=false` unless authentication is added and required.
 - Keep `CAREER_ENGINE_REQUIRE_AUTH=true` so protected API endpoints reject missing or expired sessions.
 - Use `CAREER_ENGINE_ALLOW_CREDENTIALS=true`, `CAREER_ENGINE_COOKIE_SECURE=true`, and `CAREER_ENGINE_COOKIE_SAMESITE=none` when the Vercel frontend calls the Render backend.
-- Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` for shared chat rate limiting across backend instances.
+- Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` for shared API rate limiting across backend instances.
 - Set `CAREER_ENGINE_ENABLE_DOCS=false` if Swagger/OpenAPI should not be public.
 - Treat `match_score` as a ranking score, not as a probability.
 - Do not copy `data/raw/` into Docker images or public repositories.

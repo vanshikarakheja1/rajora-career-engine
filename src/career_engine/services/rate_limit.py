@@ -30,7 +30,7 @@ def allow_with_upstash(
     rest_token: str,
 ) -> bool:
     bucket = int(time() // window_seconds)
-    redis_key = f"career-engine:chat-rate:{client_key}:{bucket}"
+    redis_key = f"career-engine:rate:{client_key}:{bucket}"
     count = int(upstash_command(rest_url, rest_token, "INCR", redis_key) or 0)
     if count == 1:
         upstash_command(rest_url, rest_token, "EXPIRE", redis_key, window_seconds + 5)

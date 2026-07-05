@@ -429,7 +429,7 @@ The latest code hardening pass fixed the main review findings before deployment:
 - The API validates string lengths, list sizes, numeric upper bounds, and experienced-user profile fields.
 - Chat history is passed to the assistant and capped so long sessions do not overload the API.
 - CORS is controlled through environment variables and restricted to the required methods and headers.
-- Chat requests have a basic in-memory rate limit for public testing.
+- Chat, recommendation, and session endpoints have configurable rate limits for public testing.
 - The response field is now `match_score` to avoid presenting the hybrid ranking score as calibrated probability.
 - Dependencies are pinned in `requirements.txt`, including Jupyter and pytest for reproducible setup.
 - Model feature constants now match the active 50K Linear SVM/XGBoost training schema.
@@ -460,6 +460,10 @@ CAREER_ENGINE_COOKIE_SAMESITE=lax
 CAREER_ENGINE_ENABLE_DOCS=true
 CAREER_ENGINE_CHAT_RATE_LIMIT=20
 CAREER_ENGINE_CHAT_RATE_WINDOW_SECONDS=60
+CAREER_ENGINE_SESSION_RATE_LIMIT=30
+CAREER_ENGINE_SESSION_ME_RATE_LIMIT=60
+CAREER_ENGINE_RECOMMEND_RATE_LIMIT=20
+CAREER_ENGINE_API_RATE_WINDOW_SECONDS=60
 CAREER_ENGINE_AUTH_CACHE_SECONDS=300
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=

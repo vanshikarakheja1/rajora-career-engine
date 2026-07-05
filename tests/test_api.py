@@ -13,6 +13,7 @@ app.dependency_overrides[verify_supabase_token] = lambda: {"id": "test-user"}
 
 
 def csrf_headers(token: str = "test-csrf-token") -> dict[str, str]:
+    client.cookies.clear()
     client.cookies.set(main_module.CSRF_COOKIE_NAME, token)
     return {main_module.CSRF_HEADER_NAME: token}
 
@@ -140,6 +141,56 @@ def test_recommend_rejects_missing_csrf_token() -> None:
     response = client.post("/api/recommend", json=sample_profile())
 
     assert response.status_code == 403
+
+
+def test_recommend_rate_limit_blocks_excess(monkeypatch) -> None:
+    rate_limit.local_request_log.clear()
+    monkeypatch.setattr(main_module, "RECOMMEND_RATE_LIMIT", 1)
+    monkeypatch.setattr(main_module, "API_RATE_WINDOW_SECONDS", 60)
+
+    try:
+        first_response = client.post("/api/recommend", json=sample_profile(), headers=csrf_headers("recommend-limit"))
+        second_response = client.post("/api/recommend", json=sample_profile(), headers=csrf_headers("recommend-limit"))
+
+        assert first_response.status_code == 200
+        assert second_response.status_code == 429
+    finally:
+        rate_limit.local_request_log.clear()
+
+
+def test_session_rate_limit_blocks_excess(monkeypatch) -> None:
+    rate_limit.local_request_log.clear()
+    monkeypatch.setattr(main_module, "SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setattr(main_module, "SUPABASE_ANON_KEY", "header.payload.signature")
+    monkeypatch.setattr(main_module, "SESSION_RATE_LIMIT", 1)
+    monkeypatch.setattr(main_module, "API_RATE_WINDOW_SECONDS", 60)
+    monkeypatch.setattr(main_module, "supabase_public_configured", lambda: True)
+    monkeypatch.setattr(main_module, "verify_token_value", lambda token: {"id": "test-user", "_access_token": token})
+    payload = {"access_token": "test-access-token-value", "refresh_token": "test-refresh-token-value", "expires_at": 4102444800}
+
+    try:
+        first_response = client.post("/api/session", json=payload)
+        second_response = client.post("/api/session", json=payload)
+
+        assert first_response.status_code == 200
+        assert second_response.status_code == 429
+    finally:
+        rate_limit.local_request_log.clear()
+
+
+def test_session_me_rate_limit_blocks_excess(monkeypatch) -> None:
+    rate_limit.local_request_log.clear()
+    monkeypatch.setattr(main_module, "SESSION_ME_RATE_LIMIT", 1)
+    monkeypatch.setattr(main_module, "API_RATE_WINDOW_SECONDS", 60)
+
+    try:
+        first_response = client.get("/api/session/me")
+        second_response = client.get("/api/session/me")
+
+        assert first_response.status_code == 200
+        assert second_response.status_code == 429
+    finally:
+        rate_limit.local_request_log.clear()
 
 
 def test_match_model_works_without_raw_catalog(monkeypatch) -> None:
