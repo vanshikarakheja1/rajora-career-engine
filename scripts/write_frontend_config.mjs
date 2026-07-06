@@ -1,6 +1,7 @@
 import { writeFileSync } from "node:fs";
 
-const apiBaseUrl = (process.env.CAREER_ENGINE_API_URL || "").replace(/\/$/, "");
+const useSameOriginApi = process.env.VERCEL && process.env.CAREER_ENGINE_USE_DIRECT_API !== "true";
+const apiBaseUrl = useSameOriginApi ? "" : (process.env.CAREER_ENGINE_API_URL || "").replace(/\/$/, "");
 
 writeFileSync(
   "frontend/config.js",

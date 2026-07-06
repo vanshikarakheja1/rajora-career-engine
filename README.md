@@ -476,6 +476,7 @@ UPSTASH_REDIS_REST_TOKEN=
 For deployment, replace `CAREER_ENGINE_ALLOWED_ORIGINS` with the real frontend domain. Avoid using `*` in production. If `*` is used for temporary testing, credentials are automatically disabled by the API configuration.
 Keep `CAREER_ENGINE_REQUIRE_AUTH=true` for deployment so recommendation and chat APIs require a valid Supabase session.
 Set `CAREER_ENGINE_ENABLE_DOCS=false` on public deployments if you do not want Swagger/OpenAPI exposed.
+On Vercel, leave `CAREER_ENGINE_API_URL` unset unless direct browser-to-Render calls are required. The default same-origin `/api` proxy avoids mobile browsers blocking authentication cookies.
 
 The Groq assistant is restricted to:
 

@@ -3,6 +3,12 @@
   "buildCommand": "node scripts/write_frontend_config.mjs",
   "outputDirectory": "frontend",
   "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://rajora-career-engine.onrender.com/api/:path*"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

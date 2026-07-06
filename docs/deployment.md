@@ -64,13 +64,9 @@ Build Command: node scripts/write_frontend_config.mjs
 Output Directory: frontend
 ```
 
-Environment variable:
+The Vercel build writes `frontend/config.js`. On Vercel, the frontend uses same-origin `/api` routes, and `vercel.json` proxies those requests to Render. This avoids third-party cookie issues on mobile browsers.
 
-```env
-CAREER_ENGINE_API_URL=https://your-render-service.onrender.com
-```
-
-The Vercel build writes `frontend/config.js` so the static frontend calls the Render API.
+Do not set `CAREER_ENGINE_API_URL` on Vercel unless you intentionally want direct browser-to-Render API calls. Direct calls can cause mobile browsers to drop auth cookies.
 
 ## 3. Update Supabase URLs
 
