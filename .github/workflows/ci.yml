@@ -32,5 +32,10 @@ jobs:
       - name: Check frontend syntax
         run: node --check frontend/app.js
 
+      - name: Run security checks
+        run: |
+          python -m bandit -r src -q
+          python -m pip_audit -r requirements.txt
+
       - name: Run tests
         run: python -m pytest

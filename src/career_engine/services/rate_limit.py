@@ -11,13 +11,16 @@ local_request_log: dict[str, list[float]] = {}
 
 
 def upstash_command(rest_url: str, rest_token: str, *parts: object) -> object:
+    if not rest_url.startswith("https://"):
+        raise ValueError("Upstash REST URL must use HTTPS.")
+
     encoded_parts = "/".join(quote(str(part), safe="") for part in parts)
     request = Request(
         f"{rest_url.rstrip('/')}/{encoded_parts}",
         method="POST",
         headers={"Authorization": f"Bearer {rest_token}"},
     )
-    with urlopen(request, timeout=3) as response:
+    with urlopen(request, timeout=3) as response:  # nosec B310
         payload = json.loads(response.read().decode("utf-8"))
     return payload.get("result")
 
@@ -58,7 +61,7 @@ def allow_request(
     limit: int,
     window_seconds: int,
     upstash_url: str = "",
-    upstash_token: str = "",
+    upstash_token: str | None = None,
 ) -> bool:
     if upstash_url and upstash_token:
         try:

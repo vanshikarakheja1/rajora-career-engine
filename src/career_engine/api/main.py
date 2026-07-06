@@ -95,7 +95,7 @@ def jwt_payload(token: str) -> dict[str, object]:
 
 
 def supabase_public_configured() -> bool:
-    return bool(SUPABASE_URL and SUPABASE_ANON_KEY and jwt_payload(SUPABASE_ANON_KEY).get("role") == "anon")
+    return bool(SUPABASE_URL.startswith("https://") and SUPABASE_ANON_KEY and jwt_payload(SUPABASE_ANON_KEY).get("role") == "anon")
 
 
 def verify_token_value(token: str) -> dict[str, object]:
@@ -112,7 +112,7 @@ def verify_token_value(token: str) -> dict[str, object]:
         },
     )
     try:
-        with urlopen(request, timeout=8) as response:
+        with urlopen(request, timeout=8) as response:  # nosec B310
             user = json.loads(response.read().decode("utf-8"))
             token_exp = jwt_payload(token).get("exp")
             ttl = AUTH_CACHE_SECONDS

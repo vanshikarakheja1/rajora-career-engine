@@ -17,6 +17,9 @@ def supabase_rest_request(
     payload: dict[str, object],
     prefer: str = "return=minimal",
 ) -> None:
+    if not supabase_url.startswith("https://"):
+        raise ValueError("Supabase REST URL must use HTTPS.")
+
     request = Request(
         f"{supabase_url}/rest/v1/{path}",
         data=json.dumps(payload).encode("utf-8"),
@@ -28,7 +31,7 @@ def supabase_rest_request(
             "Prefer": prefer,
         },
     )
-    with urlopen(request, timeout=8) as response:
+    with urlopen(request, timeout=8) as response:  # nosec B310
         response.read()
 
 
@@ -74,6 +77,6 @@ def save_profile_and_recommendations(
             },
         )
         return True
-    except (HTTPError, URLError, TimeoutError) as exc:
+    except (HTTPError, URLError, TimeoutError, ValueError) as exc:
         logger.warning("Supabase persistence failed: %s", exc)
         return False
