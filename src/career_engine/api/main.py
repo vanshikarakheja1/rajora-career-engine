@@ -127,6 +127,36 @@ def verify_token_value(token: str) -> dict[str, object]:
         raise HTTPException(status_code=503, detail="Authentication service unavailable.") from exc
 
 
+def refresh_supabase_session(refresh_token: str) -> SessionRequest:
+    request = UrlRequest(
+        f"{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token",
+        data=json.dumps({"refresh_token": refresh_token}).encode("utf-8"),
+        headers={
+            "apikey": SUPABASE_ANON_KEY,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=8) as response:  # nosec B310
+            data = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh session.") from exc
+    except URLError as exc:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable.") from exc
+
+    expires_at = data.get("expires_at")
+    if not isinstance(expires_at, int):
+        expires_in = data.get("expires_in")
+        expires_at = int(time()) + int(expires_in or 3600)
+
+    return SessionRequest(
+        access_token=str(data.get("access_token") or ""),
+        refresh_token=str(data.get("refresh_token") or refresh_token),
+        expires_at=expires_at,
+    )
+
+
 def verify_supabase_token(
     authorization: str | None = Header(default=None),
     cookie_access_token: str | None = Cookie(default=None, alias="ce_access_token"),
@@ -317,6 +347,30 @@ def session_me(
 def destroy_session(response: Response, csrf: None = Depends(verify_csrf_token)) -> SessionResponse:
     clear_session_cookies(response)
     return SessionResponse(authenticated=False)
+
+
+@app.post("/api/session/refresh", response_model=SessionResponse)
+def refresh_session(
+    response: Response,
+    request: Request,
+    refresh_token: str | None = Cookie(default=None, alias="ce_refresh_token"),
+) -> SessionResponse:
+    enforce_rate_limit(
+        request=request,
+        scope="session-refresh",
+        limit=SESSION_RATE_LIMIT,
+        window_seconds=API_RATE_WINDOW_SECONDS,
+        message="Too many authentication requests. Please try again shortly.",
+    )
+    if not supabase_public_configured():
+        raise HTTPException(status_code=503, detail="Authentication is not configured.")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh session required.")
+
+    session = refresh_supabase_session(refresh_token)
+    set_session_cookies(response, session)
+    csrf_token = set_csrf_cookie(response, cookie_max_age(session.expires_at))
+    return SessionResponse(authenticated=True, csrf_token=csrf_token)
 
 
 @app.post("/api/recommend", response_model=RecommendationResponse)

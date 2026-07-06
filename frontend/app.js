@@ -91,18 +91,43 @@ function apiUrl(path) {
   return `${apiBaseUrl}${path}`;
 }
 
-function apiFetch(path, options = {}) {
+async function refreshBackendSession() {
+  const response = await fetch(apiUrl("/api/session/refresh"), {
+    method: "POST",
+    credentials: "include",
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.csrf_token) {
+    csrfToken = "";
+    return false;
+  }
+
+  csrfToken = data.csrf_token;
+  return true;
+}
+
+async function apiFetch(path, options = {}) {
+  const { skipAuthRefresh = false, ...fetchOptions } = options;
   const method = String(options.method || "GET").toUpperCase();
-  const headers = { ...(options.headers || {}) };
+  const headers = { ...(fetchOptions.headers || {}) };
   if (!["GET", "HEAD", "OPTIONS"].includes(method) && csrfToken) {
     headers["X-CSRF-Token"] = csrfToken;
   }
 
-  return fetch(apiUrl(path), {
-    ...options,
+  const response = await fetch(apiUrl(path), {
+    ...fetchOptions,
     credentials: "include",
     headers,
   });
+  if (response.status !== 401 || skipAuthRefresh || path.startsWith("/api/session")) {
+    return response;
+  }
+
+  if (!(await refreshBackendSession())) {
+    return response;
+  }
+
+  return apiFetch(path, { ...options, skipAuthRefresh: true });
 }
 
 async function loadAuthConfig() {

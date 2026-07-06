@@ -43,6 +43,7 @@ This document tracks the hardening work completed after the code review.
    - Recommendation payloads now have bounded strings, bounded lists, and numeric upper limits.
    - The API accepts student and experienced-user profile fields.
    - Chat, recommendation, and session endpoints have rate limits for public demos.
+   - Expired access sessions can be refreshed server-side with the HttpOnly refresh cookie.
    - Docker and GitHub Actions CI files are included.
 
 ## Environment Variables

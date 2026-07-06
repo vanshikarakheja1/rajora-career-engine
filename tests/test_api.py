@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from career_engine.api import main as main_module
 from career_engine.api.main import app, allowed_origins_from_env, cors_credentials_enabled, verify_supabase_token
-from career_engine.api.schemas import ChatMessage
+from career_engine.api.schemas import ChatMessage, SessionRequest
 from career_engine.ml import model as model_module
 from career_engine.services import rate_limit
 from career_engine.services.assistant import MAX_HISTORY_MESSAGES, question_category, recent_history
@@ -86,6 +86,35 @@ def test_session_cookie_is_set_and_cleared(monkeypatch) -> None:
 
     assert logout_response.status_code == 200
     assert "ce_access_token" in logout_response.headers["set-cookie"]
+
+
+def test_session_refresh_rotates_cookies(monkeypatch) -> None:
+    client.cookies.clear()
+    client.cookies.set("ce_refresh_token", "old-refresh-token")
+    monkeypatch.setattr(main_module, "SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setattr(main_module, "SUPABASE_ANON_KEY", "header.payload.signature")
+    monkeypatch.setattr(main_module, "supabase_public_configured", lambda: True)
+    monkeypatch.setattr(
+        main_module,
+        "refresh_supabase_session",
+        lambda token: SessionRequest(access_token="new-access-token-value", refresh_token="new-refresh-token-value", expires_at=4102444800),
+    )
+
+    response = client.post("/api/session/refresh")
+
+    assert response.status_code == 200
+    assert response.json()["authenticated"] is True
+    assert response.json()["csrf_token"]
+    assert "ce_access_token" in response.headers["set-cookie"]
+    assert "ce_refresh_token" in response.headers["set-cookie"]
+
+
+def test_session_refresh_requires_refresh_cookie() -> None:
+    client.cookies.clear()
+
+    response = client.post("/api/session/refresh")
+
+    assert response.status_code == 401
 
 
 def test_recommend_returns_ranked_paths() -> None:

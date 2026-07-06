@@ -432,6 +432,7 @@ The latest code hardening pass fixed the main review findings before deployment:
 - Chat history is passed to the assistant and capped so long sessions do not overload the API.
 - CORS is controlled through environment variables and restricted to the required methods and headers.
 - Chat, recommendation, and session endpoints have configurable rate limits for public testing.
+- Expired access sessions are refreshed server-side using the HttpOnly refresh cookie, then retried once by the frontend.
 - The response field is now `match_score` to avoid presenting the hybrid ranking score as calibrated probability.
 - Production dependencies are pinned in `requirements.txt`; notebook, test, and training tools are pinned in `requirements-dev.txt`.
 - Model feature constants now match the active 50K Linear SVM/XGBoost training schema.
