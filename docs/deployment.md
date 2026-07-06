@@ -89,10 +89,13 @@ http://127.0.0.1:8000
 https://your-vercel-domain.vercel.app
 ```
 
-For email/password signup, configure one of these Supabase Auth options:
+For this project, keep email/password signup simple:
 
-- Production: enable a custom SMTP provider in `Authentication -> Settings -> SMTP Settings` so confirmation emails are delivered to real users.
-- Demo/testing: disable `Confirm Email` in `Authentication -> Providers -> Email` if you want users to sign up and login immediately without email confirmation.
+```text
+Authentication -> Providers -> Email -> Confirm Email: OFF
+```
+
+Users should be able to create an account and login directly without email confirmation.
 
 For Google provider, make sure Google Cloud OAuth also allows:
 

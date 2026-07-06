@@ -324,7 +324,9 @@ async function authenticateWithEmail() {
         return;
       }
       if (!data.session && !data.access_token) {
-        setAuthError("Account created. Check your inbox and spam folder for the confirmation email. If no email arrives, use Google login or ask the admin to enable Supabase SMTP.");
+        setAuthError("Account created. Please login with your email and password.");
+        setAuthMode("login");
+        document.getElementById("authEmail").value = email;
         return;
       }
       await createBackendSession(data.session || data);
