@@ -312,7 +312,8 @@ async function authenticateWithEmail() {
     }
 
     if (authMode === "signup") {
-      const data = await supabaseAuthRequest("/signup", {
+      const redirectTo = encodeURIComponent(window.location.origin + window.location.pathname);
+      const data = await supabaseAuthRequest(`/signup?redirect_to=${redirectTo}`, {
         method: "POST",
         body: JSON.stringify({ email, password, data: { full_name: name } }),
       });
@@ -323,7 +324,7 @@ async function authenticateWithEmail() {
         return;
       }
       if (!data.session && !data.access_token) {
-        setAuthError("Account created. Check your email to confirm your Supabase account, then login.");
+        setAuthError("Account created. Check your inbox and spam folder for the confirmation email. If no email arrives, use Google login or ask the admin to enable Supabase SMTP.");
         return;
       }
       await createBackendSession(data.session || data);
