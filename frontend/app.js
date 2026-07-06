@@ -117,6 +117,15 @@ function supabaseConfigured() {
   return Boolean(authConfig.supabase_configured && authConfig.supabase_url && authConfig.supabase_anon_key);
 }
 
+async function ensureAuthConfig() {
+  if (supabaseConfigured()) {
+    return true;
+  }
+
+  await loadAuthConfig();
+  return supabaseConfigured();
+}
+
 async function supabaseAuthRequest(path, options = {}) {
   const response = await fetch(`${authConfig.supabase_url}/auth/v1${path}`, {
     ...options,
@@ -182,6 +191,22 @@ function setAuthError(message) {
   const error = document.getElementById("authError");
   error.textContent = message;
   error.hidden = !message;
+}
+
+function setGoogleButtonBusy(isBusy) {
+  const button = document.getElementById("googleAuthButton");
+  button.disabled = isBusy;
+  button.replaceChildren();
+
+  if (isBusy) {
+    button.textContent = "Connecting to Google";
+    return;
+  }
+
+  const mark = document.createElement("span");
+  mark.className = "google-mark";
+  mark.textContent = "G";
+  button.append(mark, "Continue with Google");
 }
 
 function showApp() {
@@ -257,8 +282,8 @@ async function authenticateWithEmail() {
   setAuthError("");
 
   try {
-    if (!supabaseConfigured()) {
-      throw new Error("Authentication is not configured.");
+    if (!(await ensureAuthConfig())) {
+      throw new Error("Authentication is temporarily unavailable. Please wait a few seconds and try again.");
     }
 
     if (authMode === "signup") {
@@ -292,13 +317,21 @@ async function authenticateWithEmail() {
   }
 }
 
-function handleGoogleAuth() {
-  if (!supabaseConfigured()) {
-    setAuthError("Add SUPABASE_URL and SUPABASE_ANON_KEY in .env to enable Google login.");
-    return;
+async function handleGoogleAuth() {
+  setGoogleButtonBusy(true);
+  setAuthError("");
+
+  try {
+    if (!(await ensureAuthConfig())) {
+      throw new Error("Google login is temporarily unavailable. Please wait a few seconds and try again.");
+    }
+
+    const redirectTo = encodeURIComponent(window.location.origin + window.location.pathname);
+    window.location.href = `${authConfig.supabase_url}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
+  } catch (error) {
+    setAuthError(error.message || "Google login is temporarily unavailable. Please try again.");
+    setGoogleButtonBusy(false);
   }
-  const redirectTo = encodeURIComponent(window.location.origin + window.location.pathname);
-  window.location.href = `${authConfig.supabase_url}/auth/v1/authorize?provider=google&redirect_to=${redirectTo}`;
 }
 
 async function logout() {
