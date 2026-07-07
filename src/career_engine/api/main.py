@@ -270,7 +270,7 @@ async def add_security_headers(request: Request, call_next):
 
 
 def enforce_rate_limit(request: Request, scope: str, limit: int, window_seconds: int, message: str) -> None:
-    client_host = request.client.host if request.client else "unknown"
+    client_host = client_identifier(request)
     allowed = allow_request(
         client_key=f"{scope}:{client_host}",
         limit=limit,
@@ -280,6 +280,21 @@ def enforce_rate_limit(request: Request, scope: str, limit: int, window_seconds:
     )
     if not allowed:
         raise HTTPException(status_code=429, detail=message)
+
+
+def client_identifier(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        first_client = forwarded_for.split(",", 1)[0].strip()
+        if first_client:
+            return first_client
+
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
+
+    client = getattr(request, "client", None)
+    return client.host if client else "unknown"
 
 
 def enforce_chat_rate_limit(request: Request) -> None:

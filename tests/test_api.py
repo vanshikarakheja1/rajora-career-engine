@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from career_engine.api import main as main_module
-from career_engine.api.main import app, allowed_origins_from_env, cors_credentials_enabled, verify_supabase_token
+from career_engine.api.main import app, allowed_origins_from_env, client_identifier, cors_credentials_enabled, verify_supabase_token
 from career_engine.api.schemas import ChatMessage, SessionRequest
 from career_engine.ml import model as model_module
 from career_engine.services import rate_limit
@@ -268,6 +268,18 @@ def test_allowed_origins_are_environment_driven(monkeypatch) -> None:
 
 def test_wildcard_cors_disables_credentials() -> None:
     assert cors_credentials_enabled(["*"]) is False
+
+
+def test_rate_limit_client_identifier_prefers_forwarded_for() -> None:
+    response = client.get("/api/health", headers={"X-Forwarded-For": "203.0.113.10, 10.0.0.2"})
+
+    assert client_identifier(response.request) == "203.0.113.10"
+
+
+def test_rate_limit_client_identifier_falls_back_to_client_host() -> None:
+    response = client.get("/api/health")
+
+    assert client_identifier(response.request) in {"testclient", "unknown"}
 
 
 def test_recent_history_is_capped() -> None:
